@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+        "mcp-time": {
+            "type": "stdio",
+            "command": "mcp-time"
+        }
+    }
+}

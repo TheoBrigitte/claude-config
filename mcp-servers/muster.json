@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "muster": {
+            "command": "muster",
+            "args": [
+                "standalone"
+            ]
+        }
+    }
+}

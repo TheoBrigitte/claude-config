@@ -1,0 +1,17 @@
+{
+    "mcpServers": {
+        "prometheus": {
+            "command": "uv",
+            "args": [
+                "--directory",
+                "/home/theo/projects/giantswarm-helpers/prometheus-mcp-server",
+                "run",
+                "src/prometheus_mcp_server/main.py"
+            ],
+            "env": {
+                "PROMETHEUS_URL": "http://localhost:8080/prometheus",
+                "ORG_ID": "giantswarm"
+            }
+        }
+    }
+}

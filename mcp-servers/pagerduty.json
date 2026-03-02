@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "pagerduty": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "pagerduty-mcp"
+      ],
+      "env": {
+        "PAGERDUTY_USER_API_KEY": "${TF_VAR_pagerduty_token}"
+      }
+    }
+  }
+}
