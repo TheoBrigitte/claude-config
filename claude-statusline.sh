@@ -48,11 +48,28 @@ DURATION_FMT="⏱️ ${DURATION_MINS}m ${DURATION_SECS}s"
 # Cost formatting
 COST_FMT="${YELLOW}$(printf '$%.2f' "${COST/./,}")${RESET}"
 
+# API status formatting with caching (valid for 10 minutes to avoid excessive API calls)
+API_STATUS_OK="🟢"
+API_STATUS_KO="🟡"
+API_STATUS_FILE=~/.local/state/claude-status/api_status.txt
+API_STATUS="$(find "$API_STATUS_FILE" -mmin -10 -exec cat {} \;)"
+if [[ -z "$API_STATUS" ]]; then
+  mkdir -p "$(dirname "$API_STATUS_FILE")"
+  api_status="$(curl -LSs https://status.claude.com/api/v2/status.json | jq -r '.status.description')"
+  if echo "$api_status" | grep -iq "operational"; then
+    API_STATUS=" | $API_STATUS_OK"
+  else
+    API_STATUS="\n$API_STATUS_KO $api_status"
+  fi
+  echo -e "$API_STATUS" > "$API_STATUS_FILE"
+fi
+API_STATUS_FMT="${API_STATUS}"
+
 # Output status line
 if [[ "$TERMINAL_WIDTH" -lt 90 ]]; then
-  STATUS_LINE="${CONTEXT_FMT}\n${MODEL_FMT} | ${COST_FMT} | ${DURATION_FMT}"
+  STATUS_LINE="${CONTEXT_FMT}\n${MODEL_FMT} | ${COST_FMT} | ${DURATION_FMT}${API_STATUS_FMT}"
 else
-  STATUS_LINE="${MODEL_FMT} ${CONTEXT_FMT} | ${COST_FMT} | ${DURATION_FMT}"
+  STATUS_LINE="${MODEL_FMT} ${CONTEXT_FMT} | ${COST_FMT} | ${DURATION_FMT}${API_STATUS_FMT}"
 fi
 
 echo -e "$STATUS_LINE"
