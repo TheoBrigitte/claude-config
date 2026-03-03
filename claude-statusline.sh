@@ -1,4 +1,6 @@
 #!/bin/bash
+#
+# Format and display a status line for the latest Claude API call, showing model, context usage, cost, duration, and API status.
 
 # Input data
 input="$(cat)"
@@ -14,16 +16,26 @@ DURATION_MS="$(echo "$input" | jq -r '.cost.total_duration_ms // 0')"
 # Colors
 CYAN='\033[36m'; GREEN='\033[32m'; YELLOW='\033[33m'; RED='\033[31m'; RESET='\033[0m'
 
+# Layout
+CONTEXT_BAR_SIZE=40
+MIDDLE_SEPARATOR=" | "
+
+TERMINAL_WIDTH="$(stty size -F /dev/tty | awk '{print $2}')"
+# Reduce context bar size for narrow terminals to prevent wrapping.
+[[ "$TERMINAL_WIDTH" -lt 115 ]] && CONTEXT_BAR_SIZE=20
+
 # Pick bar color based on context usage
-if [ "$CONTEXT_PCT" -ge 90 ]; then BAR_COLOR="$RED"
-elif [ "$CONTEXT_PCT" -ge 70 ]; then BAR_COLOR="$YELLOW"
+# > 90% = red, to notify about hitting limits soon.
+# > 40% = yellow, to indicate that context has reached a significant portion, reminding about the "dumb zone" (see https://www.youtube.com/watch?v=rmvDxxNubIg).
+if [[ "$CONTEXT_PCT" -ge 90 ]]; then BAR_COLOR="$RED"
+elif [[ "$CONTEXT_PCT" -ge 40 ]]; then BAR_COLOR="$YELLOW"
 else BAR_COLOR="$GREEN"; fi
 
 # Model formatting
 MODEL_FMT="${CYAN}[$MODEL]${RESET}"
 
 # Context bar formatting
-FILLED="$((CONTEXT_PCT * 40 / 100))"; EMPTY="$((40 - FILLED))"
+FILLED="$((CONTEXT_PCT * CONTEXT_BAR_SIZE / 100))"; EMPTY="$((CONTEXT_BAR_SIZE - FILLED))"
 BAR="$(printf "%${FILLED}s" | tr ' ' '#')$(printf "%${EMPTY}s" | tr ' ' '-')"
 CONTEXT_USED="$(numfmt --to=si --round=down "${CONTEXT_CURRENT_USAGE}")"
 CONTEXT_MAX="$(numfmt --to=si "$CONTEXT_MAX_TOKENS")"
@@ -37,7 +49,13 @@ DURATION_FMT="⏱️ ${DURATION_MINS}m ${DURATION_SECS}s"
 COST_FMT="${YELLOW}$(printf '$%.2f' "${COST/./,}")${RESET}"
 
 # Output status line
-echo -e "${MODEL_FMT}  ${CONTEXT_FMT} | ${COST_FMT} | ${DURATION_FMT}"
+if [[ "$TERMINAL_WIDTH" -lt 90 ]]; then
+  STATUS_LINE="${CONTEXT_FMT}\n${MODEL_FMT} | ${COST_FMT} | ${DURATION_FMT}"
+else
+  STATUS_LINE="${MODEL_FMT} ${CONTEXT_FMT} | ${COST_FMT} | ${DURATION_FMT}"
+fi
+
+echo -e "$STATUS_LINE"
 
 ## Debug
 #{
