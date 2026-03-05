@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "sequential-thinking": {
+      "description": "Break down complex problems into sequential reasoning steps. Supports revising, branching, and extending thought chains for structured problem-solving.",
       "command": "npx",
       "args": [
         "-y",

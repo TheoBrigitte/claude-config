@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "kubernetes": {
+      "description": "Manage Kubernetes clusters: list, get, create, update, and delete resources such as pods, deployments, services, and namespaces.",
       "command": "npx",
       "args": ["mcp-server-kubernetes"]
     }

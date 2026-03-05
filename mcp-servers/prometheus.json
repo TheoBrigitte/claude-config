@@ -1,6 +1,7 @@
 {
     "mcpServers": {
         "prometheus": {
+            "description": "Query Prometheus metrics and time-series data using PromQL. Retrieve metric values, run range queries, and inspect monitoring targets and alert rules.",
             "command": "uv",
             "args": [
                 "--directory",

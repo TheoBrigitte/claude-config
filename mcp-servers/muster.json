@@ -1,6 +1,7 @@
 {
     "mcpServers": {
         "muster": {
+            "description": "Standalone deployment management tool for orchestrating and managing application deployments.",
             "command": "muster",
             "args": [
                 "standalone"

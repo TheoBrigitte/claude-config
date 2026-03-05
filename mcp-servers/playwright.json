@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "playwright": {
+      "description": "Browser automation for web interaction, testing, and scraping. Navigate pages, fill forms, click elements, take screenshots, and extract content from web applications.",
       "command": "npx",
       "args": [
         "@playwright/mcp@latest"

@@ -1,6 +1,7 @@
 {
     "mcpServers": {
         "mcp-time": {
+            "description": "Get the current date and time, convert between timezones, and perform time-related calculations.",
             "type": "stdio",
             "command": "mcp-time"
         }

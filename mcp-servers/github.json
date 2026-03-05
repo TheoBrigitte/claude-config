@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "github": {
+      "description": "Interact with GitHub repositories, pull requests, issues, commits, branches, and other GitHub resources via the GitHub API.",
       "type": "http",
       "url": "https://api.githubcopilot.com/mcp/",
       "headers": {
