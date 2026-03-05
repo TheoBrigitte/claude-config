@@ -3,7 +3,7 @@ module github.com/TheoBrigitte/claudy
 go 1.25
 
 require (
-	github.com/fatih/color v1.18.0
+	github.com/rs/zerolog v1.34.0
 	github.com/spf13/cobra v1.9.1
 )
 

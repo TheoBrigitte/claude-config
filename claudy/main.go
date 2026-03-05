@@ -9,53 +9,72 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/fatih/color"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+
 	"github.com/spf13/cobra"
 )
 
-var (
-	colorInfo  = color.New(color.FgBlue)
-	colorError = color.New(color.FgRed)
-	mcpDir     = filepath.Join("projects", "ai", "mcp-servers")
-)
-
-var (
-	mcpList    bool
-	mcpServers []string
-)
+var mcpDir = filepath.Join("projects", "ai", "mcp-servers")
 
 var rootCmd = &cobra.Command{
-	Use:   "claudy [flags] [-- CLAUDE_ARGS...]",
+	Use:   "claudy [flags] [CLAUDE_ARGS...]",
 	Short: "Launch claude with MCP server configurations",
+	Long: `Launch claude with MCP server configurations.
+
+Claudy flags:
+      --mcp-list              List available MCP servers
+      --mcp-servers strings   MCP servers to launch (comma-separated or repeated)
+
+All other flags are passed through to claude.`,
 	Example: `  claudy --mcp-list
   claudy --mcp-servers github,pagerduty
   claudy --mcp-servers github --mcp-servers pagerduty
-  claudy --mcp-servers github -- --dangerously-skip-permissions`,
-	SilenceUsage:  true,
-	SilenceErrors: true,
-	Args:          cobra.ArbitraryArgs,
-	RunE:          run,
+  claudy --mcp-servers github --print --output-format json 'Hi'`,
+	SilenceUsage:       true,
+	SilenceErrors:      true,
+	DisableFlagParsing: true,
+	RunE:               run,
 }
 
-func init() {
-	rootCmd.Flags().BoolVar(&mcpList, "mcp-list", false, "List available MCP servers")
-	rootCmd.Flags().StringSliceVar(&mcpServers, "mcp-servers", nil, "MCP servers to launch (comma-separated or repeated)")
-}
-
-func logInfo(msg string) {
-	colorInfo.Fprint(os.Stderr, "INFO")
-	fmt.Fprintf(os.Stderr, "  %s\n", msg)
-}
-
-func logError(msg string) {
-	colorError.Fprint(os.Stderr, "ERROR")
-	fmt.Fprintf(os.Stderr, " %s\n", msg)
+// parseArgs extracts claudy-specific flags from args and returns the remaining
+// args to pass through to claude.
+func parseArgs(args []string) (help bool, mcpList bool, mcpServers []string, rest []string) {
+	for i := 0; i < len(args); i++ {
+		switch {
+		case args[i] == "--help" || args[i] == "-h":
+			help = true
+		case args[i] == "--mcp-list":
+			mcpList = true
+		case args[i] == "--mcp-servers" && i+1 < len(args):
+			i++
+			for s := range strings.SplitSeq(args[i], ",") {
+				if s = strings.TrimSpace(s); s != "" {
+					mcpServers = append(mcpServers, s)
+				}
+			}
+		case strings.HasPrefix(args[i], "--mcp-servers="):
+			val := strings.TrimPrefix(args[i], "--mcp-servers=")
+			for s := range strings.SplitSeq(val, ",") {
+				if s = strings.TrimSpace(s); s != "" {
+					mcpServers = append(mcpServers, s)
+				}
+			}
+		default:
+			rest = append(rest, args[i])
+		}
+	}
+	return
 }
 
 func main() {
+	log.Logger = zerolog.New(zerolog.ConsoleWriter{
+		Out:             os.Stderr,
+		FormatTimestamp: func(i interface{}) string { return "" },
+	}).With().Logger()
+
 	if err := rootCmd.Execute(); err != nil {
-		logError(err.Error())
-		os.Exit(1)
+		log.Fatal().Msg(err.Error())
 	}
 }
 
@@ -106,11 +125,16 @@ func listServers(mcpDirPath string) error {
 	return nil
 }
 
-func run(cmd *cobra.Command, passArgs []string) error {
+func run(cmd *cobra.Command, rawArgs []string) error {
+	help, mcpList, mcpServers, passArgs := parseArgs(rawArgs)
+
+	if help {
+		return cmd.Help()
+	}
+
 	home, err := os.UserHomeDir()
 	if err != nil {
-		logError(fmt.Sprintf("cannot determine home directory: %v", err))
-		os.Exit(1)
+		log.Fatal().Err(err).Msg("cannot determine home directory")
 	}
 	mcpDirPath := filepath.Join(home, mcpDir)
 
@@ -123,23 +147,17 @@ func run(cmd *cobra.Command, passArgs []string) error {
 		chrome     = false
 	)
 
-	if len(mcpServers) > 0 {
-		for _, s := range mcpServers {
-			s = strings.TrimSpace(s)
-			if s == "" {
-				continue
-			}
-			if s == "chrome" {
-				passArgs = append(passArgs, "--chrome")
-				chrome = true
-				continue
-			}
-			cfg := filepath.Join(mcpDirPath, s+".json")
-			if _, err := os.Stat(cfg); os.IsNotExist(err) {
-				return fmt.Errorf("no config for '%s' (%s)", s, cfg)
-			}
-			mcpConfigs = append(mcpConfigs, cfg)
+	for _, s := range mcpServers {
+		if s == "chrome" {
+			passArgs = append(passArgs, "--chrome")
+			chrome = true
+			continue
 		}
+		cfg := filepath.Join(mcpDirPath, s+".json")
+		if _, err := os.Stat(cfg); os.IsNotExist(err) {
+			return fmt.Errorf("no config for '%s' (%s)", s, cfg)
+		}
+		mcpConfigs = append(mcpConfigs, cfg)
 	}
 
 	if !chrome {
@@ -158,6 +176,6 @@ func run(cmd *cobra.Command, passArgs []string) error {
 		return fmt.Errorf("claude not found in PATH: %w", err)
 	}
 
-	logInfo("exec claude " + strings.Join(args, " "))
+	log.Info().Msgf("exec claude %s", strings.Join(args, " "))
 	return syscall.Exec(claudePath, append([]string{"claude"}, args...), os.Environ())
 }
