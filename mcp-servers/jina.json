@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "jina-mcp-server": {
+    "jina": {
       "description": "Web search, webpage reading, screenshot capture, image search, academic paper search (arXiv/SSRN), BibTeX citations, PDF extraction, and semantic reranking/deduplication.",
       "type": "http",
       "url": "https://mcp.jina.ai/v1",
