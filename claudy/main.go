@@ -153,6 +153,12 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 			chrome = true
 			continue
 		}
+		if s == "grafana" {
+			err := runMcpGrafanaHook(cmd, rawArgs)
+			if err != nil {
+				return fmt.Errorf("failed to run mcp-grafana hook: %w", err)
+			}
+		}
 		cfg := filepath.Join(mcpDirPath, s+".json")
 		if _, err := os.Stat(cfg); os.IsNotExist(err) {
 			return fmt.Errorf("no config for '%s' (%s)", s, cfg)
