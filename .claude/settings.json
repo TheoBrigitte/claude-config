@@ -1,5 +1,82 @@
 {
+  "env": {
+    "DISABLE_AUTOUPDATER": "1"
+  },
+  "attribution": {
+    "commit": "",
+    "pr": ""
+  },
+  "permissions": {
+    "allow": [
+      "Bash(cat *)",
+      "Bash(echo *)",
+      "Bash(find *)",
+      "Bash(gh pr view *)",
+      "Bash(git diff *)",
+      "Bash(git grep *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git status *)",
+      "Bash(go *)",
+      "Bash(kubectl config current-context)",
+      "Bash(kubectl config get-*)",
+      "Bash(kubectl describe *)",
+      "Bash(kubectl explain *)",
+      "Bash(kubectl events *)",
+      "Bash(kubectl get *)",
+      "Bash(kubectl logs *)",
+      "Bash(kubectl wait *)",
+      "Bash(ls *)",
+      "Bash(printf *)",
+      "Bash(sort *)",
+      "Bash(tree *)",
+      "Bash(which *)",
+      "Glob(*)",
+      "WebFetch(domain:dexidp.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:support.pagerduty.com)",
+      "WebFetch(domain:www.pagerduty.com)",
+      "mcp__jina-mcp-server__*read_*",
+      "mcp__jina-mcp-server__*search_*",
+      "mcp__jina-mcp-server__*guess_*",
+      "mcp__jina-mcp-server__*expand_*",
+      "mcp__jina-mcp-server__*extract_*",
+      "mcp__jina-mcp-server__*deduplicate_*",
+      "mcp__jina-mcp-server__*screenshot_**",
+      "mcp__kubernetes__kubectl_get",
+      "mcp__kubernetes__kubectl_describe",
+      "mcp__kubernetes__kubectl_logs",
+      "mcp__kubernetes__kubectl_context",
+      "mcp__kubernetes__explain_resource",
+      "mcp__context7__query-docs",
+      "mcp__context7__resolve-library-id-docs",
+      "mcp__claudy__list_servers",
+      "mcp__github__get_*",
+      "mcp__github__list_*",
+      "mcp__github__search_*",
+      "mcp__github__*_read",
+      "mcp__pagerduty__list_*",
+      "mcp__pagerduty__get_*",
+      "mcp__slack__slack_read_*",
+      "mcp__slack__slack_search_*"
+    ],
+    "deny": [],
+    "ask": [
+      "Bash(* .env*)",
+      "Bash(* *secret*)",
+      "Bash(* *credentials*)",
+      "Read(**/.env*)",
+      "Read(**/*secret*)",
+      "Read(**/*credentials*)"
+    ],
+    "defaultMode": "default"
+  },
   "model": "opus",
+  "statusLine": {
+    "type": "command",
+    "command": "~/projects/ai/claude-statusline/claude-statusline",
+    "padding": 0
+  },
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true
   }
