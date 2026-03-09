@@ -102,39 +102,20 @@ type serverEntry struct {
 	desc string
 }
 
-func resolveMCPDir() (string, error) {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("cannot determine home directory: %w", err)
-	}
-	return filepath.Join(home, mcpDir), nil
-}
-
-func getServers(mcpDirPath string) ([]serverEntry, error) {
-	entries, err := filepath.Glob(filepath.Join(mcpDirPath, "*.json"))
-	if err != nil {
-		return nil, err
-	}
-
-	servers := []serverEntry{{name: "chrome", desc: "Browser automation via Claude in Chrome extension. (builtin)"}}
-	for _, f := range entries {
-		name := strings.TrimSuffix(filepath.Base(f), ".json")
-		servers = append(servers, serverEntry{name: name, desc: serverDescription(f)})
-	}
-	return servers, nil
-}
-
 func listServers(mcpDirPath string) error {
-	servers, err := getServers(mcpDirPath)
+	entries, err := filepath.Glob(filepath.Join(mcpDirPath, "*.json"))
 	if err != nil {
 		return err
 	}
 
-	maxLen := 0
-	for _, s := range servers {
-		if len(s.name) > maxLen {
-			maxLen = len(s.name)
+	servers := []serverEntry{{name: "chrome", desc: "Browser automation via Claude in Chrome extension. (builtin)"}}
+	maxLen := len("chrome")
+	for _, f := range entries {
+		name := strings.TrimSuffix(filepath.Base(f), ".json")
+		if len(name) > maxLen {
+			maxLen = len(name)
 		}
+		servers = append(servers, serverEntry{name: name, desc: serverDescription(f)})
 	}
 
 	fmt.Printf("  %-*s  %s\n", maxLen, "NAME", "DESCRIPTION")
@@ -145,21 +126,17 @@ func listServers(mcpDirPath string) error {
 }
 
 func run(cmd *cobra.Command, rawArgs []string) error {
-	if len(rawArgs) > 0 && rawArgs[0] == "mcp" {
-		mcpCmd.SetArgs(rawArgs[1:])
-		return mcpCmd.Execute()
-	}
-
 	help, mcpList, mcpServers, passArgs := parseArgs(rawArgs)
 
 	if help {
 		return cmd.Help()
 	}
 
-	mcpDirPath, err := resolveMCPDir()
+	home, err := os.UserHomeDir()
 	if err != nil {
-		return err
+		log.Fatal().Err(err).Msg("cannot determine home directory")
 	}
+	mcpDirPath := filepath.Join(home, mcpDir)
 
 	if mcpList {
 		return listServers(mcpDirPath)
