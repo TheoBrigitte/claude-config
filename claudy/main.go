@@ -15,7 +15,18 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var mcpDir = filepath.Join("projects", "ai", "mcp-servers")
+var mcpDir = os.Getenv("CLAUDY_MCP_DIR")
+
+// preset defines a named set of predefined claudy arguments.
+type preset struct {
+	MCPServers []string
+}
+
+var presets = map[string]preset{
+	"sre": {
+		MCPServers: []string{"jina", "github", "pagerduty", "incident-io", "kubernetes", "grafana", "slack", "sequential-thinking"},
+	},
+}
 
 var rootCmd = &cobra.Command{
 	Use:   "claudy [flags] [CLAUDE_ARGS...]",
@@ -25,9 +36,12 @@ var rootCmd = &cobra.Command{
 Claudy flags:
       --mcp-list              List available MCP servers
       --mcp-servers strings   MCP servers to launch (comma-separated or repeated)
+      --preset string         Use a predefined preset (e.g. sre)
+      --preset-list           List available presets
 
 All other flags are passed through to claude.`,
 	Example: `  claudy --mcp-list
+  claudy --preset sre
   claudy --mcp-servers github,pagerduty
   claudy --mcp-servers github --mcp-servers pagerduty
   claudy --mcp-servers github --print --output-format json 'Hi'`,
@@ -37,34 +51,51 @@ All other flags are passed through to claude.`,
 	RunE:               run,
 }
 
+type parsedArgs struct {
+	help           bool
+	mcpList        bool
+	presetList     bool
+	presetName     string
+	mcpServers     []string
+	additionalArgs []string
+}
+
 // parseArgs extracts claudy-specific flags from args and returns the remaining
 // args to pass through to claude.
-func parseArgs(args []string) (help bool, mcpList bool, mcpServers []string, rest []string) {
+func parseArgs(args []string) parsedArgs {
+	var p parsedArgs
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--help" || args[i] == "-h":
-			help = true
+			p.help = true
 		case args[i] == "--mcp-list":
-			mcpList = true
+			p.mcpList = true
+		case args[i] == "--preset-list":
+			p.presetList = true
+		case (args[i] == "--preset" || args[i] == "-p") && i+1 < len(args):
+			i++
+			p.presetName = args[i]
+		case strings.HasPrefix(args[i], "--preset="):
+			p.presetName = strings.TrimPrefix(args[i], "--preset=")
 		case args[i] == "--mcp-servers" && i+1 < len(args):
 			i++
 			for s := range strings.SplitSeq(args[i], ",") {
 				if s = strings.TrimSpace(s); s != "" {
-					mcpServers = append(mcpServers, s)
+					p.mcpServers = append(p.mcpServers, s)
 				}
 			}
 		case strings.HasPrefix(args[i], "--mcp-servers="):
 			val := strings.TrimPrefix(args[i], "--mcp-servers=")
 			for s := range strings.SplitSeq(val, ",") {
 				if s = strings.TrimSpace(s); s != "" {
-					mcpServers = append(mcpServers, s)
+					p.mcpServers = append(p.mcpServers, s)
 				}
 			}
 		default:
-			rest = append(rest, args[i])
+			p.additionalArgs = append(p.additionalArgs, args[i])
 		}
 	}
-	return
+	return p
 }
 
 func main() {
@@ -125,21 +156,50 @@ func listServers(mcpDirPath string) error {
 	return nil
 }
 
-func run(cmd *cobra.Command, rawArgs []string) error {
-	help, mcpList, mcpServers, passArgs := parseArgs(rawArgs)
+func listPresets() {
+	maxLen := 0
+	for name := range presets {
+		if len(name) > maxLen {
+			maxLen = len(name)
+		}
+	}
+	fmt.Printf("  %-*s  %s\n", maxLen, "NAME", "DESCRIPTION")
+	for name, p := range presets {
+		parts := []string{"--mcp-servers " + strings.Join(p.MCPServers, ",")}
+		fmt.Printf("  %-*s  %s\n", maxLen, name, strings.Join(parts, " "))
+	}
+}
 
-	if help {
+func run(cmd *cobra.Command, rawArgs []string) error {
+	p := parseArgs(rawArgs)
+
+	if p.help {
 		return cmd.Help()
 	}
 
-	home, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatal().Err(err).Msg("cannot determine home directory")
+	if mcpDir == "" {
+		log.Fatal().Msg("CLAUDY_MCP_DIR is not set")
 	}
-	mcpDirPath := filepath.Join(home, mcpDir)
+	mcpDirPath := mcpDir
 
-	if mcpList {
+	if p.mcpList {
 		return listServers(mcpDirPath)
+	}
+
+	if p.presetList {
+		listPresets()
+		return nil
+	}
+
+	// Apply preset if specified
+	mcpServers := p.mcpServers
+	additionalArgs := p.additionalArgs
+	if p.presetName != "" {
+		pr, ok := presets[p.presetName]
+		if !ok {
+			return fmt.Errorf("unknown preset '%s' (use --preset-list to see available presets)", p.presetName)
+		}
+		mcpServers = append(pr.MCPServers, mcpServers...)
 	}
 
 	var (
@@ -149,14 +209,16 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 
 	for _, s := range mcpServers {
 		if s == "chrome" {
-			passArgs = append(passArgs, "--chrome")
+			additionalArgs = append(additionalArgs, "--chrome")
 			chrome = true
 			continue
 		}
 		if s == "grafana" {
 			err := runMcpGrafanaHook(cmd, rawArgs)
 			if err != nil {
-				return fmt.Errorf("failed to run mcp-grafana hook: %w", err)
+				// return fmt.Errorf("failed to run mcp-grafana hook: %w", err)
+				log.Err(err).Msg("failed to run mcp-grafana hook")
+				continue
 			}
 		}
 		cfg := filepath.Join(mcpDirPath, s+".json")
@@ -167,7 +229,7 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 	}
 
 	if !chrome {
-		passArgs = append(passArgs, "--no-chrome")
+		additionalArgs = append(additionalArgs, "--no-chrome")
 	}
 
 	args := []string{"--strict-mcp-config"}
@@ -175,7 +237,7 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 		args = append(args, "--mcp-config")
 		args = append(args, mcpConfigs...)
 	}
-	args = append(args, passArgs...)
+	args = append(args, additionalArgs...)
 
 	claudePath, err := exec.LookPath("claude")
 	if err != nil {
