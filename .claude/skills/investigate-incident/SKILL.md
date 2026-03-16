@@ -19,12 +19,28 @@ The agent will:
 
 If no incident reference is provided, ask the user for the incident ID or details before launching the agent.
 
-## Step 2: Slack Communication (optional)
+## Step 2: Incident Management
 
-After the investigation agent completes and you have presented the report to the user, **ask the user** if they want the report posted to Slack.
+After the investigation agent completes and you have presented the report to the user, search Slack for related incidents **before** asking the user anything.
 
-If the user agrees:
-1. **Check for an existing incident channel**: Search Slack for an active incident channel related to the same alert, cluster, or component. Look for channels matching patterns like `#inc-*`, `#incident-*`, or similar naming conventions
-2. **If a matching channel exists**: Post the investigation report as a message in that existing channel
-3. **If no matching channel exists**: Create a new incident channel using the Slack incident.io bot by invoking `/incident` in an appropriate channel (e.g., `#incidents` or `#alerts`), then post the report in the newly created channel
-4. **Report format for Slack**: Adapt the investigation report to be Slack-friendly — use Slack markdown formatting, keep it concise, and include the key sections (Summary, Root Cause, Recommended Actions)
+### Search phase:
+1. Search Slack for active incident channels matching patterns like `#inc-*` related to the same alert, cluster, or component
+2. Search recent Slack messages and threads for keywords from the investigation (cluster name, service name, error messages)
+
+### Present options via `AskUserQuestion`:
+
+**If a matching incident channel and/or thread was found**, present options like:
+1. Post to `#inc-<incident-name>` (the matching channel)
+2. Post in thread (link to the matching thread)
+3. Create a new incident via incident.io
+4. Skip
+
+**If no related Slack channel or thread was found**, present options like:
+1. Create a new incident via incident.io
+2. Skip
+
+### Creating a new incident:
+Use the incident.io MCP tools to create a new incident with the investigation findings (summary, severity, affected components), then post the investigation report in the newly created incident channel.
+
+### Report format for Slack:
+Adapt the investigation report to be Slack-friendly — use Slack markdown formatting, keep it concise, and include the key sections (Summary, Root Cause, Recommended Actions)
