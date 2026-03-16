@@ -45,24 +45,25 @@ func Get() string {
 	// Try to read from the file-based cache first.
 	if home, err := os.UserHomeDir(); err == nil {
 		statusFileFullPath := filepath.Join(home, cacheRelPath)
-		os.MkdirAll(filepath.Dir(statusFileFullPath), 0o755)
-		statusFile, err := os.OpenFile(statusFileFullPath, os.O_RDWR|os.O_CREATE, 0o644)
-		if err == nil {
-			if info, err := statusFile.Stat(); err == nil {
-				if time.Since(info.ModTime()) < cacheDuration {
-					// Cache is fresh — return it without hitting the API.
-					if cached, err := io.ReadAll(statusFile); err == nil {
-						return strings.TrimSpace(string(cached))
-					}
-				} else {
-					// Cache is stale — truncate and schedule a write-back
-					// after the live fetch completes via deferred closure.
-					if err = statusFile.Truncate(0); err == nil {
-						if _, err = statusFile.Seek(0, 0); err == nil {
-							defer statusFile.Close()
-							defer func() {
-								statusFile.WriteString(status)
-							}()
+		if err := os.MkdirAll(filepath.Dir(statusFileFullPath), 0o755); err == nil { // nolint:gosec // G301: cache directory, world-readable is fine
+			statusFile, err := os.OpenFile(statusFileFullPath, os.O_RDWR|os.O_CREATE, 0o644) //nolint:gosec // G302: cache file, world-readable is fine
+			if err == nil {
+				if info, err := statusFile.Stat(); err == nil {
+					if time.Since(info.ModTime()) < cacheDuration {
+						// Cache is fresh — return it without hitting the API.
+						if cached, err := io.ReadAll(statusFile); err == nil {
+							return strings.TrimSpace(string(cached))
+						}
+					} else {
+						// Cache is stale — truncate and schedule a write-back
+						// after the live fetch completes via deferred closure.
+						if err = statusFile.Truncate(0); err == nil {
+							if _, err = statusFile.Seek(0, 0); err == nil {
+								defer statusFile.Close() //nolint:errcheck
+								defer func() {
+									statusFile.WriteString(status) //nolint:errcheck,gosec
+								}()
+							}
 						}
 					}
 				}
@@ -81,7 +82,7 @@ func Fetch(client *http.Client, url string) string {
 	if err != nil {
 		return StatusERR + fmt.Sprintf("request: %v", err.Error())
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint:errcheck
 	var r apiStatusResponse
 	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
 		return StatusERR + fmt.Sprintf("reponse: %v", err.Error())

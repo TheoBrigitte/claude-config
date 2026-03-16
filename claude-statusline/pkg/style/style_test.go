@@ -141,9 +141,9 @@ func TestCombined(t *testing.T) {
 
 func TestParseHex(t *testing.T) {
 	tests := []struct {
-		input string
+		input   string
 		r, g, b byte
-		ok    bool
+		ok      bool
 	}{
 		{"#ff0000", 255, 0, 0, true},
 		{"#abc", 170, 187, 204, true},

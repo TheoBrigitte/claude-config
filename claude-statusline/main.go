@@ -88,7 +88,7 @@ func runWith(configPath string, r io.Reader, w io.Writer, termWidth int) error {
 			})
 		}
 		for _, line := range layout.Lines(termWidth, parts) {
-			fmt.Fprintln(w, line)
+			fmt.Fprintln(w, line) //nolint:errcheck // best-effort stdout write
 		}
 	}
 	return nil

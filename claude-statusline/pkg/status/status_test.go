@@ -11,7 +11,7 @@ import (
 func TestFetch(t *testing.T) {
 	t.Run("operational returns green", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, `{"status":{"description":"All Systems Operational"}}`)
+			fmt.Fprint(w, `{"status":{"description":"All Systems Operational"}}`) // nolint:errcheck
 		}))
 		defer srv.Close()
 
@@ -23,7 +23,7 @@ func TestFetch(t *testing.T) {
 
 	t.Run("degraded returns warning", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, `{"status":{"description":"Partially Degraded Service"}}`)
+			fmt.Fprint(w, `{"status":{"description":"Partially Degraded Service"}}`) // nolint:errcheck
 		}))
 		defer srv.Close()
 
@@ -35,7 +35,7 @@ func TestFetch(t *testing.T) {
 
 	t.Run("invalid JSON returns error", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, `not json`)
+			fmt.Fprint(w, `not json`) // nolint:errcheck
 		}))
 		defer srv.Close()
 
@@ -61,7 +61,7 @@ func TestFetch(t *testing.T) {
 
 	t.Run("case insensitive operational match", func(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, `{"status":{"description":"all systems OPERATIONAL"}}`)
+			fmt.Fprint(w, `{"status":{"description":"all systems OPERATIONAL"}}`) // nolint:errcheck
 		}))
 		defer srv.Close()
 

@@ -107,8 +107,8 @@ warn_style = "fg:#e0af68"
 critical_threshold = 80.0
 critical_style = "bold fg:#f7768e"
 `
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		t.Fatal(err)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil { //nolint:gosec // G302: config file, world-readable is fine
+		t.Fatalf("failed to write config file: %v", err)
 	}
 
 	cfg, err := Load(path)
@@ -145,7 +145,9 @@ critical_style = "bold fg:#f7768e"
 func TestLoadInvalidTOML(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "bad.toml")
-	os.WriteFile(path, []byte("not valid [toml {{{"), 0o644)
+	if err := os.WriteFile(path, []byte("not valid [toml {{{"), 0o644); err != nil { //nolint:gosec // G302: config file, world-readable is fine
+		t.Fatalf("failed to write invalid TOML: %v", err)
+	}
 
 	_, err := Load(path)
 	if err == nil {

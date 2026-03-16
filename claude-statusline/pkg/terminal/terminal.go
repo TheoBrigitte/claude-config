@@ -16,7 +16,7 @@ func Width() int {
 	if err != nil {
 		return defaultWidth
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	w, _, err := term.GetSize(int(f.Fd()))
 	if err != nil {
