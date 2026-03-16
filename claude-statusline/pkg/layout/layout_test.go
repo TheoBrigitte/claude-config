@@ -165,3 +165,20 @@ func TestLinesWrappedOmitsSeparator(t *testing.T) {
 		t.Errorf("wrapped lines should not contain separator: %v", lines)
 	}
 }
+
+// Benchmarks
+
+func BenchmarkLines(b *testing.B) {
+	parts := []*Part{
+		NewPart("[Opus 4.6]", style.Parse("cyan")),
+		NewPart("########----", style.Parse("green")),
+		NewPart("(27k/1M tokens)", nil),
+		NewPart("7%", nil),
+		NewPart("$0.25", style.Parse("yellow")),
+		NewPart("⏱️ 4m 5s", nil),
+	}
+	b.ResetTimer()
+	for b.Loop() {
+		Lines(120, parts)
+	}
+}

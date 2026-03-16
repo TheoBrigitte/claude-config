@@ -4,7 +4,6 @@ go 1.25.6
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/dustin/go-humanize v1.0.1
 	golang.org/x/term v0.40.0
 )
 

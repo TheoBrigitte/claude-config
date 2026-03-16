@@ -68,3 +68,23 @@ func TestCost(t *testing.T) {
 		})
 	}
 }
+
+// Benchmarks
+
+func BenchmarkCost(b *testing.B) {
+	for b.Loop() {
+		Cost(0.247)
+	}
+}
+
+func BenchmarkDuration(b *testing.B) {
+	for b.Loop() {
+		Duration(245000)
+	}
+}
+
+func BenchmarkSI(b *testing.B) {
+	for b.Loop() {
+		SI(27400)
+	}
+}

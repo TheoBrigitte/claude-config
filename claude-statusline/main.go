@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
@@ -18,27 +19,59 @@ import (
 )
 
 func main() {
-	var configPath string
+	configPath := parseArgs()
+	if err := run(configPath); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+}
+
+// parseArgs handles the single optional --config flag.
+func parseArgs() string {
 	args := os.Args[1:]
-	for i, a := range args {
-		if a == "--config" && i+1 < len(args) {
-			configPath = args[i+1]
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--config" && i+1 < len(args) {
+			return args[i+1]
+		}
+		if v, ok := strings.CutPrefix(args[i], "--config="); ok {
+			return v
 		}
 	}
+	return ""
+}
 
+// styleCache avoids re-parsing the same style string across modules.
+var styleCache = make(map[string]*style.Style)
+
+func cachedParse(s string) *style.Style {
+	if s == "" {
+		return nil
+	}
+	if st, ok := styleCache[s]; ok {
+		return st
+	}
+	st := style.Parse(s)
+	styleCache[s] = st
+	return st
+}
+
+func run(configPath string) error {
+	return runWith(configPath, os.Stdin, os.Stdout, terminal.Width())
+}
+
+// runWith is the testable core: loads config, decodes JSON, renders output.
+func runWith(configPath string, r io.Reader, w io.Writer, termWidth int) error {
 	cfg, err := config.Load(configPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error loading config: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("loading config: %w", err)
 	}
 
 	var in model.Input
-	if err := json.NewDecoder(os.Stdin).Decode(&in); err != nil {
-		fmt.Fprintf(os.Stderr, "error parsing JSON: %v\n", err)
-		os.Exit(1)
+	if err := json.NewDecoder(r).Decode(&in); err != nil {
+		return fmt.Errorf("parsing JSON from stdin: %w", err)
 	}
 
-	termWidth := terminal.Width() - cfg.Padding
+	termWidth -= cfg.Padding
 	modules := renderModules(cfg, in, termWidth)
 
 	for _, lineTemplate := range cfg.Lines {
@@ -55,9 +88,10 @@ func main() {
 			})
 		}
 		for _, line := range layout.Lines(termWidth, parts) {
-			fmt.Println(line)
+			fmt.Fprintln(w, line)
 		}
 	}
+	return nil
 }
 
 // moduleResult holds both the rendered (styled) and raw (unstyled) text for a module.
@@ -80,7 +114,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	if !cfg.Model.Disabled && (cfg.Model.MinWidth == 0 || termWidth >= cfg.Model.MinWidth) {
 		if in.Model.DisplayName != "" {
 			raw := applyFormat(cfg.Model.Format, in.Model.DisplayName, cfg.Model.Symbol)
-			s := style.Parse(cfg.Model.Style)
+			s := cachedParse(cfg.Model.Style)
 			m["$model"] = moduleResult{s.Sprint(raw), len(raw)}
 		}
 	}
@@ -112,9 +146,9 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 
 	// Context tokens
 	if !cfg.ContextTokens.Disabled {
-		value := fmt.Sprintf("%s/%s tokens", format.SI(currentUsage), format.SI(in.ContextWindow.ContextWindowSize))
+		value := format.SI(currentUsage) + "/" + format.SI(in.ContextWindow.ContextWindowSize) + " tokens"
 		raw := applyFormat(cfg.ContextTokens.Format, value, cfg.ContextTokens.Symbol)
-		s := style.Parse(cfg.ContextTokens.Style)
+		s := cachedParse(cfg.ContextTokens.Style)
 		m["$context_tokens"] = moduleResult{s.Sprint(raw), len(raw)}
 	}
 
@@ -122,7 +156,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	if !cfg.ContextPct.Disabled {
 		value := fmt.Sprintf("%d", contextPct)
 		raw := applyFormat(cfg.ContextPct.Format, value, cfg.ContextPct.Symbol)
-		s := style.Parse(cfg.ContextPct.Style)
+		s := cachedParse(cfg.ContextPct.Style)
 		m["$context_pct"] = moduleResult{s.Sprint(raw), len(raw)}
 	}
 
@@ -138,7 +172,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	if !cfg.Duration.Disabled {
 		value := format.Duration(in.Cost.TotalDurationMS)
 		raw := applyFormat(cfg.Duration.Format, value, cfg.Duration.Symbol)
-		s := style.Parse(cfg.Duration.Style)
+		s := cachedParse(cfg.Duration.Style)
 		m["$duration"] = moduleResult{s.Sprint(raw), len(raw)}
 	}
 
@@ -146,7 +180,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	if !cfg.Status.Disabled {
 		value := status.Get()
 		raw := applyFormat(cfg.Status.Format, value, cfg.Status.Symbol)
-		s := style.Parse(cfg.Status.Style)
+		s := cachedParse(cfg.Status.Style)
 		m["$status"] = moduleResult{s.Sprint(raw), len(raw)}
 	}
 
@@ -159,23 +193,24 @@ func applyFormat(format, value, symbol string) string {
 	if format == "" {
 		return symbol + value
 	}
-	r := strings.NewReplacer("{value}", value, "{symbol}", symbol)
-	return r.Replace(format)
+	s := strings.Replace(format, "{value}", value, 1)
+	s = strings.Replace(s, "{symbol}", symbol, 1)
+	return s
 }
 
 // resolveThresholdStyle picks the appropriate style based on threshold config.
 func resolveThresholdStyle(cfg config.ThresholdConfig, value float64) *style.Style {
 	if cfg.CriticalThreshold > 0 && value >= cfg.CriticalThreshold {
-		if s := style.Parse(cfg.CriticalStyle); s != nil {
+		if s := cachedParse(cfg.CriticalStyle); s != nil {
 			return s
 		}
 	}
 	if cfg.WarnThreshold > 0 && value >= cfg.WarnThreshold {
-		if s := style.Parse(cfg.WarnStyle); s != nil {
+		if s := cachedParse(cfg.WarnStyle); s != nil {
 			return s
 		}
 	}
-	return style.Parse(cfg.Style)
+	return cachedParse(cfg.Style)
 }
 
 // renderSegment replaces all $module tokens in a segment template with their

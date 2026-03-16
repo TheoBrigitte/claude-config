@@ -11,14 +11,13 @@
 package style
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 )
 
-// Style holds parsed ANSI SGR codes ready to wrap text.
+// Style holds a pre-computed ANSI prefix for wrapping text.
 type Style struct {
-	codes []string
+	prefix string // e.g. "\033[1;31m"
 }
 
 var namedFg = map[string]int{
@@ -40,49 +39,49 @@ func Parse(s string) *Style {
 	if s == "" {
 		return nil
 	}
-	st := &Style{}
+	var codes []string
 	for p := range strings.FieldsSeq(s) {
 		switch p {
 		case "bold":
-			st.codes = append(st.codes, "1")
+			codes = append(codes, "1")
 		case "dimmed", "dim":
-			st.codes = append(st.codes, "2")
+			codes = append(codes, "2")
 		case "italic":
-			st.codes = append(st.codes, "3")
+			codes = append(codes, "3")
 		case "underline":
-			st.codes = append(st.codes, "4")
+			codes = append(codes, "4")
 		default:
 			if val, ok := strings.CutPrefix(p, "fg:"); ok {
 				if r, g, b, ok := parseHex(val); ok {
-					st.codes = append(st.codes, fmt.Sprintf("38;2;%d;%d;%d", r, g, b))
+					codes = append(codes, "38;2;"+strconv.Itoa(int(r))+";"+strconv.Itoa(int(g))+";"+strconv.Itoa(int(b)))
 				}
 			} else if val, ok := strings.CutPrefix(p, "bg:"); ok {
 				if r, g, b, ok := parseHex(val); ok {
-					st.codes = append(st.codes, fmt.Sprintf("48;2;%d;%d;%d", r, g, b))
+					codes = append(codes, "48;2;"+strconv.Itoa(int(r))+";"+strconv.Itoa(int(g))+";"+strconv.Itoa(int(b)))
 				} else if code, ok := namedBg[val]; ok {
-					st.codes = append(st.codes, strconv.Itoa(code))
+					codes = append(codes, strconv.Itoa(code))
 				}
 			} else if strings.HasPrefix(p, "#") {
 				if r, g, b, ok := parseHex(p); ok {
-					st.codes = append(st.codes, fmt.Sprintf("38;2;%d;%d;%d", r, g, b))
+					codes = append(codes, "38;2;"+strconv.Itoa(int(r))+";"+strconv.Itoa(int(g))+";"+strconv.Itoa(int(b)))
 				}
 			} else if code, ok := namedFg[p]; ok {
-				st.codes = append(st.codes, strconv.Itoa(code))
+				codes = append(codes, strconv.Itoa(code))
 			}
 		}
 	}
-	if len(st.codes) == 0 {
+	if len(codes) == 0 {
 		return nil
 	}
-	return st
+	return &Style{prefix: "\033[" + strings.Join(codes, ";") + "m"}
 }
 
 // Sprint wraps text in ANSI escape codes. Nil-safe: returns text unchanged.
 func (s *Style) Sprint(text string) string {
-	if s == nil || len(s.codes) == 0 {
+	if s == nil {
 		return text
 	}
-	return fmt.Sprintf("\033[%sm%s\033[0m", strings.Join(s.codes, ";"), text)
+	return s.prefix + text + "\033[0m"
 }
 
 // parseHex parses #RGB or #RRGGBB hex color strings.

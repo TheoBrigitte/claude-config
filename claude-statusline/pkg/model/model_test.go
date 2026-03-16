@@ -137,3 +137,19 @@ func TestInputContextWindow(t *testing.T) {
 		}
 	})
 }
+
+// Benchmarks
+
+func BenchmarkParseCurrentUsageObject(b *testing.B) {
+	raw := json.RawMessage(`{"input_tokens":21000,"output_tokens":6400,"cache_creation_input_tokens":5000}`)
+	for b.Loop() {
+		ParseCurrentUsage(raw)
+	}
+}
+
+func BenchmarkParseCurrentUsageNumber(b *testing.B) {
+	raw := json.RawMessage(`27400`)
+	for b.Loop() {
+		ParseCurrentUsage(raw)
+	}
+}

@@ -71,6 +71,12 @@ test: ## Run the complete test suite, optionally filtered by run_pattern or benc
 	go test -v -race -run="$(run_pattern)" -bench="$(bench_pattern)" -benchmem ./...
 	@printf "$(GREEN)Tests completed successfully$(RESET)\n"
 
+.PHONY: bench
+bench: ## Run all benchmarks
+	@printf "$(CYAN)Running benchmarks...$(RESET)\n"
+	go test -run=^$$ -bench=. -benchmem ./...
+	@printf "$(GREEN)Benchmarks completed$(RESET)\n"
+
 ##@ Code Quality
 
 .PHONY: lint
@@ -114,6 +120,7 @@ help: ## Display this help message
 	@printf "  make build                          # Build the binary\n"
 	@printf "  make test                           # Run all tests\n"
 	@printf "  make test run_pattern=Parse         # Run tests matching 'Parse'\n"
+	@printf "  make bench                          # Run all benchmarks\n"
 	@printf "  make lint-all                       # Run all code quality checks\n"
 	@printf "  make security                       # Run all security scans\n"
 	@printf "  make clean                          # Clean all artifacts\n"
