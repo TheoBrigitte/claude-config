@@ -56,7 +56,7 @@ func runMcpGrafanaHook(cmd *cobra.Command, args []string) error {
 		log.Info().Msg("starting kubectl port-forward to grafana")
 		pfCmd := exec.Command("kubectl", "--namespace", grafanaNamespace,
 			"port-forward", grafanaService, grafanaLocalPort+":"+grafanaServicePort)
-		pfCmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		pfCmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 		if err := pfCmd.Start(); err != nil {
 			return fmt.Errorf("failed to start port-forward: %w", err)
 		}

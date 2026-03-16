@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 
@@ -99,6 +100,14 @@ func parseArgs(args []string) parsedArgs {
 }
 
 func main() {
+	// Pin the main goroutine to this OS thread. This ensures the port-forward
+	// child process (started with Pdeathsig) and the subsequent syscall.Exec
+	// both happen on the same thread. Without this, Exec kills all other Go
+	// runtime threads, which triggers Pdeathsig prematurely on any child
+	// forked from a different thread.
+	runtime.LockOSThread()
+
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{
 		Out:             os.Stderr,
 		FormatTimestamp: func(i interface{}) string { return "" },
