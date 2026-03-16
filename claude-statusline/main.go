@@ -108,7 +108,15 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 		contextPct = int(*in.ContextWindow.UsedPercentage)
 	}
 
-	m := make(map[string]moduleResult)
+	m := map[string]moduleResult{
+		"$model":          {"", 0},
+		"$context_bar":    {"", 0},
+		"$context_tokens": {"", 0},
+		"$context_pct":    {"", 0},
+		"$cost":           {"", 0},
+		"$duration":       {"", 0},
+		"$status":         {"", 0},
+	}
 
 	// Model
 	if !cfg.Model.Disabled && (cfg.Model.MinWidth == 0 || termWidth >= cfg.Model.MinWidth) {
@@ -120,7 +128,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	}
 
 	// Context bar
-	if !cfg.ContextBar.Disabled {
+	if !cfg.ContextBar.Disabled && (cfg.ContextBar.MinWidth == 0 || termWidth >= cfg.ContextBar.MinWidth) {
 		barWidth := cfg.ContextBar.Width
 		if barWidth == 0 {
 			barWidth = max(termWidth/3, 40)
@@ -145,7 +153,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	}
 
 	// Context tokens
-	if !cfg.ContextTokens.Disabled {
+	if !cfg.ContextTokens.Disabled && (cfg.ContextTokens.MinWidth == 0 || termWidth >= cfg.ContextTokens.MinWidth) {
 		value := format.SI(currentUsage) + "/" + format.SI(in.ContextWindow.ContextWindowSize) + " tokens"
 		raw := applyFormat(cfg.ContextTokens.Format, value, cfg.ContextTokens.Symbol)
 		s := cachedParse(cfg.ContextTokens.Style)
@@ -153,7 +161,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	}
 
 	// Context percentage
-	if !cfg.ContextPct.Disabled {
+	if !cfg.ContextPct.Disabled && (cfg.ContextPct.MinWidth == 0 || termWidth >= cfg.ContextPct.MinWidth) {
 		value := fmt.Sprintf("%d", contextPct)
 		raw := applyFormat(cfg.ContextPct.Format, value, cfg.ContextPct.Symbol)
 		s := cachedParse(cfg.ContextPct.Style)
@@ -161,7 +169,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	}
 
 	// Cost
-	if !cfg.Cost.Disabled {
+	if !cfg.Cost.Disabled && (cfg.Cost.MinWidth == 0 || termWidth >= cfg.Cost.MinWidth) {
 		value := format.Cost(in.Cost.TotalCostUSD)
 		raw := applyFormat(cfg.Cost.Format, value, cfg.Cost.Symbol)
 		s := resolveThresholdStyle(cfg.Cost, in.Cost.TotalCostUSD)
@@ -169,7 +177,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	}
 
 	// Duration
-	if !cfg.Duration.Disabled {
+	if !cfg.Duration.Disabled && (cfg.Duration.MinWidth == 0 || termWidth >= cfg.Duration.MinWidth) {
 		value := format.Duration(in.Cost.TotalDurationMS)
 		raw := applyFormat(cfg.Duration.Format, value, cfg.Duration.Symbol)
 		s := cachedParse(cfg.Duration.Style)
@@ -177,7 +185,7 @@ func renderModules(cfg config.Config, in model.Input, termWidth int) map[string]
 	}
 
 	// Status
-	if !cfg.Status.Disabled {
+	if !cfg.Status.Disabled && (cfg.Status.MinWidth == 0 || termWidth >= cfg.Status.MinWidth) {
 		value := status.Get()
 		raw := applyFormat(cfg.Status.Format, value, cfg.Status.Symbol)
 		s := cachedParse(cfg.Status.Style)

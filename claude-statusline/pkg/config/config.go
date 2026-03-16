@@ -72,7 +72,8 @@ func Default() Config {
 		ContextBar: ContextBarCfg{
 			ThresholdConfig: ThresholdConfig{
 				ModuleConfig: ModuleConfig{
-					Style: "green",
+					Style:    "green",
+					MinWidth: 60,
 				},
 				WarnThreshold:     40,
 				WarnStyle:         "yellow",
