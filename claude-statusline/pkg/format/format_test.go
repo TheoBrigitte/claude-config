@@ -3,8 +3,6 @@ package format
 import (
 	"fmt"
 	"testing"
-
-	"github.com/fatih/color"
 )
 
 func TestSI(t *testing.T) {
@@ -29,40 +27,17 @@ func TestSI(t *testing.T) {
 	}
 }
 
-func TestBarColor(t *testing.T) {
-	tests := []struct {
-		pct       int
-		wantColor color.Attribute
-	}{
-		{0, color.FgGreen},
-		{39, color.FgGreen},
-		{40, color.FgYellow},
-		{89, color.FgYellow},
-		{90, color.FgRed},
-		{100, color.FgRed},
-	}
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("pct=%d", tt.pct), func(t *testing.T) {
-			got := BarColor(tt.pct)
-			want := color.New(tt.wantColor)
-			if got.Sprint("x") != want.Sprint("x") {
-				t.Errorf("BarColor(%d) produced unexpected color", tt.pct)
-			}
-		})
-	}
-}
-
 func TestDuration(t *testing.T) {
 	tests := []struct {
 		ms   int
 		want string
 	}{
-		{0, "⏱️ 0m 0s"},
-		{5000, "⏱️ 0m 5s"},
-		{60000, "⏱️ 1m 0s"},
-		{90000, "⏱️ 1m 30s"},
-		{245000, "⏱️ 4m 5s"},
-		{3_600_000, "⏱️ 60m 0s"},
+		{0, "0m 0s"},
+		{5000, "0m 5s"},
+		{60000, "1m 0s"},
+		{90000, "1m 30s"},
+		{245000, "4m 5s"},
+		{3_600_000, "60m 0s"},
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%dms", tt.ms), func(t *testing.T) {

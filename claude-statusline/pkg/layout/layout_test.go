@@ -4,11 +4,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fatih/color"
+	"claude-statusline/pkg/style"
 )
 
 func TestNewPart(t *testing.T) {
-	t.Run("without color", func(t *testing.T) {
+	t.Run("without style", func(t *testing.T) {
 		p := NewPart("hello", nil)
 		if p.Text != "hello" {
 			t.Errorf("text = %q, want %q", p.Text, "hello")
@@ -18,8 +18,8 @@ func TestNewPart(t *testing.T) {
 		}
 	})
 
-	t.Run("with color has same logical length", func(t *testing.T) {
-		p := NewPart("hello", color.New(color.FgRed))
+	t.Run("with style has same logical length", func(t *testing.T) {
+		p := NewPart("hello", style.Parse("red"))
 		if p.Length() != 5 {
 			t.Errorf("length = %d, want 5 (should track raw text length, not ANSI)", p.Length())
 		}
@@ -48,9 +48,9 @@ func TestPartAppend(t *testing.T) {
 		}
 	})
 
-	t.Run("with color preserves logical length", func(t *testing.T) {
+	t.Run("with style preserves logical length", func(t *testing.T) {
 		p := NewPart("a", nil)
-		p.Append("b", " ", color.New(color.FgCyan))
+		p.Append("b", " ", style.Parse("cyan"))
 		if p.Length() != 3 {
 			t.Errorf("length = %d, want 3", p.Length())
 		}

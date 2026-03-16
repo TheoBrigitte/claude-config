@@ -1,7 +1,7 @@
 // Package layout handles assembling and wrapping status line parts.
 package layout
 
-import "github.com/fatih/color"
+import "claude-statusline/pkg/style"
 
 const Separator = " | "
 
@@ -12,30 +12,22 @@ type Part struct {
 	Len  int
 }
 
-// NewPart creates a Part with the given text, optionally colored.
-func NewPart(text string, c *color.Color) *Part {
+// NewPart creates a Part with the given text, optionally styled.
+func NewPart(text string, s *style.Style) *Part {
 	p := &Part{}
-	p.Append(text, "", c)
+	p.Append(text, "", s)
 	return p
 }
 
 // Append adds text to the end of the part.
-func (p *Part) Append(text, separator string, c *color.Color) {
-	if c == nil {
-		p.Text += separator + text
-	} else {
-		p.Text += separator + c.Sprint(text)
-	}
+func (p *Part) Append(text, separator string, s *style.Style) {
+	p.Text += separator + s.Sprint(text)
 	p.Len += len(text + separator)
 }
 
 // Prepend adds text to the beginning of the part.
-func (p *Part) Prepend(text, separator string, c *color.Color) {
-	if c == nil {
-		p.Text = text + separator + p.Text
-	} else {
-		p.Text = c.Sprint(text) + separator + p.Text
-	}
+func (p *Part) Prepend(text, separator string, s *style.Style) {
+	p.Text = s.Sprint(text) + separator + p.Text
 	p.Len += len(text + separator)
 }
 
