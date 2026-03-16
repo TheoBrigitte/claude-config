@@ -223,12 +223,14 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 			continue
 		}
 		if s == "grafana" {
+			log.Info().Msg("configuring Grafana MCP server...")
 			err := runMcpGrafanaHook(cmd, rawArgs)
 			if err != nil {
 				// return fmt.Errorf("failed to run mcp-grafana hook: %w", err)
 				log.Err(err).Msg("failed to run mcp-grafana hook")
 				continue
 			}
+			log.Info().Msg("configured Grafana MCP server successfully")
 		}
 		cfg := filepath.Join(mcpDirPath, s+".json")
 		if _, err := os.Stat(cfg); os.IsNotExist(err) {
