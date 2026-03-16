@@ -1,10 +1,36 @@
 # claude-statusline
 
-A configurable status line for [Claude Code](https://claude.ai/code) sessions.
+A configurable [status line](https://code.claude.com/docs/en/statusline) for [Claude Code](https://claude.ai/code) sessions.
 
 Reads Claude Code's session JSON from stdin and renders a styled, multi-segment
 status line in your terminal. Fully customizable via a TOML config file — colors,
 layout, thresholds, Nerd Font icons, and more.
+
+## Features
+
+**Modules** — each independently configurable:
+- **Model** — active Claude model name (e.g. `[Opus 4.6]`)
+- **Context bar** — visual progress bar of context window usage (`###------`)
+- **Context tokens** — numeric token counts with SI formatting (e.g. `42k/200k tokens`)
+- **Context percentage** — context usage as a percentage (e.g. `5%`)
+- **Cost** — session cost in USD (`$1.23`)
+- **Duration** — total API duration (`4m 5s`)
+- **Status** — live Claude API health from `status.claude.com` with 10-minute file-based cache (🟢/🟡/🔴)
+
+**Configuration** (TOML):
+- Per-module: `disabled`, `style`, `symbol`, `format` (`{value}`/`{symbol}` placeholders), `min_width`
+- Threshold-based styling on cost and context bar (warn/critical with different colors)
+- Custom line layout templates — modules are `$tokens` placed freely in line strings
+- Context bar customization: width, fill/empty characters
+
+**Starship-compatible styling**:
+- Named colors (`red`, `cyan`, `bright_green`…), 24-bit hex (`fg:#c792ea`, `bg:#1a1a2e`)
+- Modifiers: `bold`, `dim`, `italic`, `underline` — freely composable
+
+**Responsive layout**:
+- Auto-wrapping: segments overflow to new lines when exceeding terminal width
+- Per-module `min_width` to hide on narrow terminals
+- Terminal width detection via `/dev/tty` (works with piped stdin)
 
 ## Install
 
@@ -27,7 +53,7 @@ Works out of the box with sensible defaults — no config file needed. The defau
 output looks like:
 
 ```
-[Opus 4.6 (1M context)] | ##########------------------------------ (27k/1M tokens) 27% | $0.25 | ⏱️ 4m 5s | 🟢
+[Opus 4.6 (1M context)] | ##########------------------------------ (20k/1M tokens) 2% | $0.25 | ⏱️ 4m 5s | 🟢
 ```
 
 To customize, create `~/.config/claude-statusline.toml`:
@@ -241,13 +267,13 @@ you can use glyph icons as `symbol` values:
 symbol = "󰚩 "    # nf-md-robot
 
 [context_bar]
-symbol = " "    # nf-oct-cpu
+symbol = " "    # nf-oct-cpu
 
 [cost]
-symbol = " "    # nf-fa-dollar
+symbol = " "    # nf-fa-dollar
 
 [duration]
-symbol = " "    # nf-fa-clock_o
+symbol = " "    # nf-fa-clock
 ```
 
 Browse icons at [nerdfonts.com/cheat-sheet](https://www.nerdfonts.com/cheat-sheet).
@@ -304,7 +330,7 @@ fill_char = "█"
 empty_char = "░"
 ```
 
-### 3. Cost Guardian
+### 3. Cost monitoring
 
 Focused on spending awareness. No context bar clutter.
 
@@ -401,6 +427,23 @@ disabled = true
 disabled = true
 ```
 
+## Responsive Layout
+
+The status line adapts to your terminal width automatically:
+
+- **Auto-wrapping** — segments within a line wrap to the next line when they
+  exceed the terminal width, using the `separator` as the breakpoint.
+- **`min_width` per module** — each module can set a minimum terminal width
+  (in columns) required for it to appear. For example, `[model]` defaults to
+  `min_width = 80`, so it hides on narrow terminals. Set `min_width = 0` to
+  always show a module.
+- **Auto-sizing context bar** — when `[context_bar].width` is `0` (the
+  default), the bar width scales to one-third of the terminal width (minimum
+  40 characters).
+
+This means the same config works well across different terminal sizes — from a
+narrow split pane to a full-width monitor.
+
 ## Performance
 
 `claude-statusline` runs on every prompt render, so it's built to be fast.
@@ -448,6 +491,13 @@ make test           # Run test suite
 make lint-all       # Run all linters
 make install        # Build and install to ~/.local/bin
 ```
+
+## Credits
+
+- [Claude Code](https://claude.ai/code) for the session JSON API and status line integration
+- [Starship](https://starship.rs) for the style syntax and rendering inspiration
+- [Nerd Fonts](https://www.nerdfonts.com) for the extensive icon library
+- [CShip](https://github.com/stephenleo/cship) for the inspiration on configuration format
 
 ## License
 
