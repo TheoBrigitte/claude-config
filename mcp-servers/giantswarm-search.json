@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "giantswarm-search": {
+      "command": "go",
+      "args": [
+        "run",
+        "github.com/giantswarm/search-mcp@latest",
+        "serve"
+      ],
+      "env": {
+        "OAUTH_ISSUER_URL": "https://dex.operations.awsprod.gigantic.io",
+        "OAUTH_CLIENT_ID": "searchmcp"
+      }
+    }
+  }
+}

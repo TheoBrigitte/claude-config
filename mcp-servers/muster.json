@@ -2,9 +2,12 @@
     "mcpServers": {
         "muster": {
             "description": "Standalone deployment management tool for orchestrating and managing application deployments.",
-            "command": "muster",
+            "command": "go",
             "args": [
-                "standalone"
+                "run",
+                "github.com/giantswarm/muster@latest",
+                "agent",
+                "--mcp-server"
             ]
         }
     }

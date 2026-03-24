@@ -1,0 +1,16 @@
+{
+    "mcpServers": {
+        "grafana": {
+            "description": "Query and manage Grafana dashboards, panels, datasources, and alerts. Browse metrics, inspect visualizations, and retrieve monitoring data.",
+            "command": "uvx",
+            "args": ["mcp-grafana"],
+            "env": {
+                "GRAFANA_URL": "http://localhost:3000",
+                "GRAFANA_USERNAME": "${GRAFANA_USERNAME}",
+                "GRAFANA_PASSWORD": "${GRAFANA_PASSWORD}",
+                "GRAFANA_SERVICE_ACCOUNT_TOKEN": "${GRAFANA_SERVICE_ACCOUNT_TOKEN}",
+                "GRAFANA_ORG_ID": "${GRAFANA_ORG_ID}"
+            }
+        }
+    }
+}

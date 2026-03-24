@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "incident-io": {
+      "command": "go",
+      "args":[
+        "run",
+        "github.com/incident-io/incidentio-mcp-golang/cmd/mcp-server@latest"
+      ],
+      "env": {
+        "INCIDENT_IO_API_KEY": "${INCIDENT_IO_API_KEY}"
+      }
+    }
+  }
+}

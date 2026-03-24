@@ -1,0 +1,9 @@
+{
+    "mcpServers": {
+        "kubernetes-alt": {
+            "description": "Manage Kubernetes clusters: list, get, create, update, and delete resources such as pods, deployments, services, and namespaces.",
+            "type": "stdio",
+            "command": "mcp-server-kubernetes"
+        }
+    }
+}
