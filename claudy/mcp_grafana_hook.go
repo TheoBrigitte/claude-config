@@ -101,6 +101,10 @@ func runMcpGrafanaHook(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to get grafana org ID: %w", err)
 	}
 	log.Debug().Str("orgID", orgID).Msg("got grafana org ID")
+	err = os.Setenv("GRAFANA_ORG_ID", orgID)
+	if err != nil {
+		return fmt.Errorf("failed to set GRAFANA_ORG_ID env var: %w", err)
+	}
 
 	// Step 3: Get Grafana admin credentials from k8s secret (with local cache)
 	adminUser, adminPass, err := getGrafanaAdminCreds(kubeCtx)

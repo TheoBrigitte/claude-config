@@ -16,7 +16,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var mcpDir = os.Getenv("CLAUDY_MCP_DIR")
+var (
+	mcpDir     = os.Getenv("CLAUDY_MCP_DIR")
+	sandboxCmd = os.Getenv("CLAUDY_SANDBOX_CMD")
+	claudeCmd  = "claude"
+)
 
 // preset defines a named set of predefined claudy arguments.
 type preset struct {
@@ -39,6 +43,7 @@ Claudy flags:
       --mcp-servers strings   MCP servers to launch (comma-separated or repeated)
       --preset string         Use a predefined preset (e.g. sre)
       --preset-list           List available presets
+      --sandbox               Run claude inside a sandbox
 
 All other flags are passed through to claude.`,
 	Example: `  claudy --mcp-list
@@ -53,12 +58,13 @@ All other flags are passed through to claude.`,
 }
 
 type parsedArgs struct {
-	help           bool
-	mcpList        bool
-	presetList     bool
-	presetName     string
-	mcpServers     []string
-	additionalArgs []string
+	help       bool
+	sandbox    bool
+	mcpList    bool
+	presetList bool
+	presetName string
+	mcpServers []string
+	userArgs   []string
 }
 
 // parseArgs extracts claudy-specific flags from args and returns the remaining
@@ -69,6 +75,8 @@ func parseArgs(args []string) parsedArgs {
 		switch {
 		case args[i] == "--help" || args[i] == "-h":
 			p.help = true
+		case args[i] == "--sandbox":
+			p.sandbox = true
 		case args[i] == "--mcp-list":
 			p.mcpList = true
 		case args[i] == "--preset-list":
@@ -93,7 +101,7 @@ func parseArgs(args []string) parsedArgs {
 				}
 			}
 		default:
-			p.additionalArgs = append(p.additionalArgs, args[i])
+			p.userArgs = append(p.userArgs, args[i])
 		}
 	}
 	return p
@@ -110,7 +118,7 @@ func main() {
 	zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	log.Logger = zerolog.New(zerolog.ConsoleWriter{
 		Out:             os.Stderr,
-		FormatTimestamp: func(i interface{}) string { return "" },
+		FormatTimestamp: func(i any) string { return "" },
 	}).With().Logger()
 
 	if err := rootCmd.Execute(); err != nil {
@@ -202,7 +210,6 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 
 	// Apply preset if specified
 	mcpServers := p.mcpServers
-	additionalArgs := p.additionalArgs
 	if p.presetName != "" {
 		pr, ok := presets[p.presetName]
 		if !ok {
@@ -216,9 +223,12 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 		chrome     = false
 	)
 
+	claudeArgs := []string{}
+	userArgs := p.userArgs
+
 	for _, s := range mcpServers {
 		if s == "chrome" {
-			additionalArgs = append(additionalArgs, "--chrome")
+			claudeArgs = append(claudeArgs, "--chrome")
 			chrome = true
 			continue
 		}
@@ -240,21 +250,37 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 	}
 
 	if !chrome {
-		additionalArgs = append(additionalArgs, "--no-chrome")
+		claudeArgs = append(claudeArgs, "--no-chrome")
 	}
 
-	args := []string{"--strict-mcp-config"}
+	claudeArgs = append(claudeArgs, "--strict-mcp-config")
+
 	if len(mcpConfigs) > 0 {
-		args = append(args, "--mcp-config")
-		args = append(args, mcpConfigs...)
+		claudeArgs = append(claudeArgs, "--mcp-config")
+		claudeArgs = append(claudeArgs, mcpConfigs...)
 	}
-	args = append(args, additionalArgs...)
+	// claudeArgs = append(claudeArgs, userArgs...)
 
-	claudePath, err := exec.LookPath("claude")
+	// Final command
+	claudePath, err := exec.LookPath(claudeCmd)
 	if err != nil {
 		return fmt.Errorf("claude not found in PATH: %w", err)
 	}
 
-	log.Info().Msgf("exec claude %s", strings.Join(args, " "))
-	return syscall.Exec(claudePath, append([]string{"claude"}, args...), os.Environ())
+	command := claudePath
+	args := []string{claudePath}
+
+	if p.sandbox {
+		sandboxPath, err := exec.LookPath(sandboxCmd)
+		if err != nil {
+			return fmt.Errorf("sandbox command %q not found in PATH: %w", sandboxCmd, err)
+		}
+		command = sandboxPath
+		args = []string{sandboxPath}
+	}
+	args = append(args, claudeArgs...)
+	args = append(args, userArgs...)
+
+	log.Info().Msgf("exec %s %s", command, strings.Join(args[1:], " "))
+	return syscall.Exec(command, args, os.Environ())
 }
