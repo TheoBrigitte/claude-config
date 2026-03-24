@@ -203,6 +203,7 @@
     ],
     "deny": [],
     "ask": [
+      "Bash(rm *)",
       "Bash(* .env*)",
       "Bash(* *secret*)",
       "Bash(* *credentials*)",
@@ -212,7 +213,7 @@
     ],
     "defaultMode": "default"
   },
-  "model": "opus",
+  "model": "opus[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -233,5 +234,25 @@
   },
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "giantswarm": {
+      "source": {
+        "source": "github",
+        "repo": "giantswarm/claude-code"
+      }
+    }
+  },
+  "voiceEnabled": false,
+  "lspServers": {
+    "go": {
+      "command": "gopls",
+      "args": [
+        "serve"
+      ],
+      "extensionToLanguage": {
+        ".go": "go"
+      }
+    }
   }
 }
