@@ -228,7 +228,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "~/projects/ai/claude-statusline/claude-statusline",
+    "command": "claude-statusline",
     "padding": 0
   },
   "enabledPlugins": {
