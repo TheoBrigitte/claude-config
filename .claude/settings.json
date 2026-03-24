@@ -221,7 +221,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "/home/theo/.claude/hooks/notify-ask.sh"
+            "command": "/home/theo/.claude/hooks/notify.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/theo/.claude/hooks/notify.sh"
           }
         ]
       }
