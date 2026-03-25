@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-# If this is the active tmux window, skip the notification
-if [[ "$(tmux display-message -pt "$TMUX_PANE" '#{window_active}')" -eq "1" ]]; then
+# Skip notification only if this is the active tmux window AND the terminal window is focused
+TMUX_WINDOW_ACTIVE="$(tmux display-message -pt "$TMUX_PANE" '#{window_active}')"
+CLIENT_FOCUSED="$(tmux display-message -pt "$TMUX_PANE" '#{client_flags}' | grep -c 'focused')"
+if [[ "$TMUX_WINDOW_ACTIVE" -eq "1" ]] && [[ "$CLIENT_FOCUSED" -gt "0" ]]; then
   exit
 fi
 TMUX_WINDOW_INDEX="$(tmux display-message -p -F '#{window_index}' -t "$TMUX_PANE" || echo none)"
