@@ -6,12 +6,13 @@ if [[ "$(tmux display-message -pt "$TMUX_PANE" '#{window_active}')" -eq "1" ]]; 
 fi
 TMUX_WINDOW_INDEX="$(tmux display-message -p -F '#{window_index}' -t "$TMUX_PANE" || echo none)"
 SUMMARY="Claude #${TMUX_WINDOW_INDEX}"
+CLAUDE_CONFIG_ICON_PATH="${CLAUDE_CONFIG_ICON_PATH:-$HOME/.claude/claude-color.svg}"
 
 # Read hook input
 INPUT="$(cat -)"
 
 # Handle questions, those should be coming from the "PermissionRequest" hook event, but only checking for the presence of a question in the input.
-QUESTION="$(echo "$INPUT" | jq -r '( .tool_input.questions | first.question | strings')"
+QUESTION="$(echo "$INPUT" | jq -r '.tool_input.questions | first.question | strings')"
 if [[ -n "$QUESTION" ]]; then
   notify-send -i "$CLAUDE_CONFIG_ICON_PATH" "$SUMMARY" "Question: $QUESTION"
   exit 0
@@ -20,7 +21,7 @@ fi
 # Handle permission requests
 if echo "$INPUT" | jq -e '.hook_event_name == "PermissionRequest"' 1>/dev/null; then
   # Read the permission request's tool and command from the input
-  REQUEST="$(echo "$INPUT" | jq -r '.tool_input.description, "<b>" + .tool_name +"( "+ .tool_input.command +" ) </b>"')"
+  REQUEST="$(echo "$INPUT" | jq -r '"<b>" + .tool_name + "</b>"')"
 
   # Send the notification, with allow and deny actions
   RESPONSE="$(notify-send -i "$CLAUDE_CONFIG_ICON_PATH" --wait --expire-time 5000 --action=ALLOW=Allow --action=DENY=Deny "${SUMMARY} - Permission request" "$REQUEST")"

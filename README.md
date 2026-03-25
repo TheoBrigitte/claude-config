@@ -48,7 +48,7 @@ claudy --mcp-servers github -- --resume  # pass extra flags to claude
 
 Claudy reads JSON config files from [mcp-servers/](mcp-servers/) and passes them to `claude --mcp-config`. It also handles a Grafana MCP hook that sets up kubectl port-forwarding and Grafana service account tokens automatically.
 
-## ⚙️ [.claude/](./claude/)
+## ⚙️ [.claude/](.claude/)
 
 This is the standard configuration directory for Claude, it contains:
 
