@@ -1,16 +1,24 @@
 #!/usr/bin/env bash
 # stolen from glitchcrab https://gigantic.slack.com/archives/C05DCHUKTFH/p1773071560428739?thread_ts=1773071457.451679&cid=C05DCHUKTFH
 
-WORKDIR="$HOME/projects/empty/$(uuidgen)"
+set -eu
+
+# Create workdir
+SESSION_ID="$(uuidgen)"
+WORKDIR="${CLAUDE_CONFIG_SANDBOX_DIR%/}/${SESSION_ID}"
+mkdir "$WORKDIR"
+
+# Create claude config directory
 CLAUDE_CONFIG_DIR="$WORKDIR/.claude_config"
+mkdir "$CLAUDE_CONFIG_DIR"
 
-mkdir -p "$WORKDIR" "$CLAUDE_CONFIG_DIR"
-trap 'rm -rf "$WORKDIR"' EXIT
-
+# Copy claude configuration to workdir, excluding projects and debug directories which may contain large files and are not needed for the session
 rsync -aP --quiet "$HOME/.claude/" "$CLAUDE_CONFIG_DIR/" \
   --exclude "projects" \
   --exclude "debug"
 cp "$HOME/.claude.json" "$WORKDIR/.claude.json"
+
+echo "WORKDIR: $WORKDIR" 1>&2
 
 bwrap \
     --uid "$(id -u)" \
@@ -27,7 +35,6 @@ bwrap \
     --ro-bind /opt/claude-code/ /opt/claude-code/ \
     --ro-bind "$HOME/.gitconfig" "$HOME/.gitconfig" \
     --ro-bind "$HOME/.local" "$HOME/.local" \
-    --ro-bind "$HOME/projects/ai" "$HOME/projects/ai" \
     --bind "$CLAUDE_CONFIG_DIR" "$HOME/.claude" \
     --bind "$WORKDIR/.claude.json" "$HOME/.claude.json" \
     --bind "$WORKDIR" "$WORKDIR" \
@@ -38,7 +45,7 @@ bwrap \
     --unshare-pid \
     --die-with-parent \
     --chdir "$WORKDIR" \
-    /usr/bin/claude "$@" # start Claude and pass all arguments through
+    /usr/bin/claude --session-id "$SESSION_ID" "$@" # start Claude and pass all arguments through
 
 ### Alternative from: https://github.com/giantswarm/rfc/pull/135/changes
 
