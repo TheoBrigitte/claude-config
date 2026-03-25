@@ -17,8 +17,8 @@ import (
 )
 
 var (
-	mcpDir     = os.Getenv("CLAUDY_MCP_DIR")
-	sandboxCmd = os.Getenv("CLAUDY_SANDBOX_CMD")
+	mcpDir     = os.Getenv("CLAUDE_CONFIG_MCP_DIR")
+	sandboxCmd = os.Getenv("CLAUDE_CONFIG_SANDBOX_CMD")
 	claudeCmd  = "claude"
 )
 
@@ -195,7 +195,7 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 	}
 
 	if mcpDir == "" {
-		log.Fatal().Msg("CLAUDY_MCP_DIR is not set")
+		log.Fatal().Msg("CLAUDE_CONFIG_MCP_DIR is not set")
 	}
 	mcpDirPath := mcpDir
 
