@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "context7": {
-      "description": "Retrieve up-to-date documentation and code examples for any programming library or framework, with version-specific support.",
+      "description": "Fetch up-to-date docs and code examples for any library or framework.",
       "type": "http",
       "url": "https://mcp.context7.com/mcp",
       "headers": {

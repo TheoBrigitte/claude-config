@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "filesystem": {
+      "description": "Read, write, search, and manage files and directories on the local filesystem.",
       "command": "npx",
       "args": [
         "-y",

@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "pagerduty": {
-      "description": "Manage PagerDuty incidents, services, schedules, and on-call rotations. Trigger, acknowledge, and resolve incidents programmatically.",
+      "description": "Manage PagerDuty incidents, services, schedules, and on-call rotations.",
       "type": "stdio",
       "command": "uvx",
       "args": [

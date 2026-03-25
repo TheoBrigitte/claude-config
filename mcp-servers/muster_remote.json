@@ -1,7 +1,7 @@
 {
     "mcpServers": {
         "muster_remote": {
-            "description": "Standalone deployment management tool for orchestrating and managing application deployments.",
+            "description": "Remote universal control plane and meta-MCP server aggregator.",
             "type": "http",
             "url": "https://muster.gazelle.awsprod.gigantic.io/mcp"
         }

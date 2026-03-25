@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "slack": {
-      "description": "Send and read Slack messages, search conversations, manage channels, and interact with Slack workspaces.",
+      "description": "Send and read Slack messages, search conversations, and manage channels.",
       "type": "http",
       "url": "https://mcp.slack.com/mcp",
       "oauth": {

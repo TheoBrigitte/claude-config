@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "giantswarm-search": {
+      "description": "Search Giant Swarm documentation, intranet, and internal knowledge base.",
       "command": "go",
       "args": [
         "run",

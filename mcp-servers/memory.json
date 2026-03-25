@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "memory": {
+      "description": "Persistent knowledge graph memory for storing and retrieving entities.",
       "command": "npx",
       "args": [
         "-y",

@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "incident-io": {
+      "description": "Manage incident.io incidents, actions, follow-ups, and post-mortems.",
       "command": "go",
       "args":[
         "run",

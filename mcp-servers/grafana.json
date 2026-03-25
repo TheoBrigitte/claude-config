@@ -1,7 +1,7 @@
 {
     "mcpServers": {
         "grafana": {
-            "description": "Query and manage Grafana dashboards, panels, datasources, and alerts. Browse metrics, inspect visualizations, and retrieve monitoring data.",
+            "description": "Query Grafana dashboards, panels, datasources, and alerts. Browse metrics.",
             "command": "uvx",
             "args": ["mcp-grafana"],
             "env": {
