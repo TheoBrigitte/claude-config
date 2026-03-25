@@ -1,15 +1,14 @@
 <div align="center">
 
+<p align="center">
+    <img src="assets/claude-config.png" alt="claude-config logo" height="150px">
+</p>
+
 # claude-config
 
 ⚙️ Personal [Claude Code] configuration and tooling.
 
-<p align="center">
-    <img src="assets/claude-config.png" alt="claude-config logo" height="800px">
-</p>
-
 </div>
-
 
 ## ⚡ Quick Start
 
