@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "code-index": {
+      "description": "Semantic code search: find functions, classes, and symbols across repos.",
+      "command": "uvx",
+      "args": ["code-index-mcp", "--project-path", "${PWD}"]
+    }
+  }
+}
