@@ -76,13 +76,23 @@ color: green
 
 Collect information related to the incident from PagerDuty, Slack, GitHub, and incident.io.
 
-### Step 1: PagerDuty
-- Fetch PagerDuty incident details using `mcp__pagerduty__get_incident` and its alerts using `mcp__pagerduty__list_alerts_from_incident`
-- Extract the cluster name, affected service/component, alert summary, and timeline from PagerDuty — these inform all subsequent searches
-- List recent incidents using `mcp__pagerduty__list_incidents` to find similar ongoing or recent incidents
+### Step 1: Extract search terms
 
-### Step 2: Search remaining sources in parallel
-Once you have the PagerDuty context, run these searches **in parallel**:
+Parse the context you received and extract key search terms:
+- Cluster name, affected service/component names
+- Alert name and summary
+- Error messages or log patterns
+- Specific app or Helm release names
+- Timeline of when symptoms started
+
+If no prior context was provided, fetch PagerDuty incident details using `mcp__pagerduty__get_incident` and `mcp__pagerduty__list_alerts_from_incident` to bootstrap your search terms.
+
+### Step 2: Search sources in parallel
+Using these search terms, run the following searches **in parallel**:
+
+#### PagerDuty
+- Search for similar recent incidents on the same service or cluster using `mcp__pagerduty__list_incidents` — filter by service ID or scan titles for matching keywords
+- Do **NOT** use `mcp__pagerduty__get_past_incidents` or `mcp__pagerduty__get_related_incidents` — these tools do not work
 
 #### Slack
 - Search for recent messages mentioning the cluster name (e.g., `gazelle`, `iridium-prod`) using `mcp__slack__slack_search_public_and_private`
