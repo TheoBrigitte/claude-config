@@ -10,24 +10,21 @@ If no incident reference is provided, ask the user for the incident link, ID or 
 
 Follow this exact sequence:
 
-## Step 1: Gather Recent Context
+## Step 1: Investigation
 
-Launch the `incident-context-gatherer` subagent to collect recent context from PagerDuty, Slack, GitHub, and incident.io related to the affected cluster. Pass along the incident reference, cluster name, alert details, component names, and any other context the user has provided.
-
-Pass this context to the investigation agent in the next step.
-
-## Step 2: Investigation
-
-Launch the `incident-investigator` subagent to perform the full investigation. Pass along any incident ID, cluster name, alert details, or other context the user has provided — **including the context gathered in Step 1**.
+Launch the `incident-investigator` subagent to perform the full investigation. Pass along any incident ID, cluster name, alert details, or other context the user has provided.
 
 You MUST present the report to the user.
 
+## Step 2: Gather Context & Correlate Similar Incidents
+
+After the investigation agent completes and you have presented the report to the user, run the context-gathering phase below — do NOT prompt the user until it is complete.
+
+Launch the `incident-context-gatherer` subagent to collect context from PagerDuty, Slack, GitHub, and incident.io. Include all information learned during the investigation (root cause, affected components, error messages, related services, cluster name). This pass surfaces Slack threads, related incidents, or GitHub activity that match the investigation findings.
+
 ## Step 3: Incident Management
 
-After the investigation agent completes and you have presented the report to the user, run the search phase below first — do NOT prompt the user until the second context-gathering pass is complete.
-
-### Search phase:
-Launch the `incident-context-gatherer` subagent again, this time including any new information learned during the investigation (root cause, affected components, error messages, related services). This second pass may surface Slack threads, incidents, or GitHub activity that weren't relevant before but match the investigation findings.
+After the context-gathering phase completes, proceed with incident management — do NOT prompt the user until this step is ready.
 
 ### Present options via `AskUserQuestion`:
 
