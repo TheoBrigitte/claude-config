@@ -1,74 +1,88 @@
 #!/usr/bin/env bash
 
 # Skip notification only if this is the active tmux window AND the terminal window is focused
-TMUX_WINDOW_ACTIVE="$(tmux display-message -pt "$TMUX_PANE" '#{window_active}')"
-CLIENT_FOCUSED="$(tmux display-message -pt "$TMUX_PANE" '#{client_flags}' | grep -c 'focused')"
-if [[ "$TMUX_WINDOW_ACTIVE" -eq "1" ]] && [[ "$CLIENT_FOCUSED" -gt "0" ]]; then
-  exit
-fi
+#TMUX_WINDOW_ACTIVE="$(tmux display-message -pt "$TMUX_PANE" '#{window_active}')"
+#CLIENT_FOCUSED="$(tmux display-message -pt "$TMUX_PANE" '#{client_flags}' | grep -c 'focused')"
+#if [[ "$TMUX_WINDOW_ACTIVE" -eq "1" ]] && [[ "$CLIENT_FOCUSED" -gt "0" ]]; then
+#  exit
+#fi
 TMUX_WINDOW_INDEX="$(tmux display-message -p -F '#{window_index}' -t "$TMUX_PANE" || echo none)"
 SUMMARY="Claude #${TMUX_WINDOW_INDEX}"
 CLAUDE_CONFIG_ICON_PATH="${CLAUDE_CONFIG_ICON_PATH:-$HOME/.claude/claude-color.svg}"
 
 # Read hook input
 INPUT="$(cat -)"
+echo "$INPUT" > "/home/theo/projects/ai/notifications-dump/$(uuidgen).json"
 
-# Handle questions, those should be coming from the "PermissionRequest" hook event, but only checking for the presence of a question in the input.
-QUESTION="$(echo "$INPUT" | jq -r '.tool_input.questions | first.question | strings')"
-if [[ -n "$QUESTION" ]]; then
-  notify-send -i "$CLAUDE_CONFIG_ICON_PATH" "$SUMMARY" "Question: $QUESTION"
+# Handle non permission request, and assume those are Claude noification messages
+if echo "$INPUT" | jq -e '.hook_event_name != "PermissionRequest"' 1>/dev/null; then
+  # Ignore permission notifications which would otherwise be duplicated from the PermissionRequest handling below.
+  NOTIFICATION_TYPE="$(echo "$INPUT" | jq -r '.notification_type')"
+  if [[ "$NOTIFICATION_TYPE" == "permission_prompt" ]]; then
+    exit
+  fi
+
+  # Build the notification message
+  MESSAGE="$(echo "$INPUT" | jq -r '.message | strings')"
+  TITLE="$(echo "$INPUT" | jq -r '.title | strings')"
+  if [[ -n "$TITLE" ]]; then
+    MESSAGE="<b>$TITLE</b>\n${MESSAGE}"
+  fi
+
+  notify-send -i "$CLAUDE_CONFIG_ICON_PATH" "$SUMMARY" "${MESSAGE}"
   exit 0
 fi
 
-# Handle permission requests
-if echo "$INPUT" | jq -e '.hook_event_name == "PermissionRequest"' 1>/dev/null; then
-  # Read the permission request's tool and command from the input
-  REQUEST="$(echo "$INPUT" | jq -r '"<b>" + .tool_name + "</b>"')"
+# Handle PermissionRequest messages
 
-  # Send the notification, with allow and deny actions
-  RESPONSE="$(notify-send -i "$CLAUDE_CONFIG_ICON_PATH" --wait --expire-time 5000 --action=ALLOW=Allow --action=DENY=Deny "${SUMMARY} - Permission request" "$REQUEST")"
+# Read the permission request's tool and command from the input
+TOOL_NAME="$(echo "$INPUT" | jq -r '.tool_name | strings')"
 
-  # Handle responses
-  case "$RESPONSE" in
-    ALLOW)
-      jq -n '{
-    "hookSpecificOutput": {
-      "hookEventName": "PermissionRequest",
-      "decision": {
-        "behavior": "allow"
-      }
+# Handle different tools formats
+MESSAGE=""
+case "$TOOL_NAME" in
+  AskUserQuestion)
+    MESSAGE="Question: $(echo "$INPUT" | jq -r '.tool_input.questions | first.question | strings')"
+    # Send questions as notifications without actions
+    notify-send -i "$CLAUDE_CONFIG_ICON_PATH" "$SUMMARY" "$MESSAGE"
+    exit 0;;
+
+  Bash)
+    MESSAGE="$(echo "$INPUT" | jq -r '(.tool_input.description | strings), ("Bash( " + .tool_input.command | strings + " )")')";;
+  Edit)
+    MESSAGE="$(echo "$INPUT" | jq -r '"Edit( " + .tool_input.file_path | strings + " )"')";;
+  *)
+    MESSAGE="$TOOL_NAME";;
+esac
+
+# Send the notification, with allow and deny actions
+RESPONSE="$(notify-send -i "$CLAUDE_CONFIG_ICON_PATH" --wait --expire-time 5000 --action=ALLOW=Allow --action=DENY=Deny "${SUMMARY} - Permissions request" "${MESSAGE}")"
+
+# Handle responses action response
+case "$RESPONSE" in
+  ALLOW)
+    jq -n '{
+  "hookSpecificOutput": {
+    "hookEventName": "PermissionRequest",
+    "decision": {
+      "behavior": "allow"
     }
-  }'
-    ;;
-    DENY)
-      jq -n '{
-    "hookSpecificOutput": {
-      "hookEventName": "PermissionRequest",
-      "decision": {
-        "behavior": "deny",
-        "message": "User denied permission for this action."
-      }
+  }
+}'
+  ;;
+  DENY)
+    jq -n '{
+  "hookSpecificOutput": {
+    "hookEventName": "PermissionRequest",
+    "decision": {
+      "behavior": "deny",
+      "message": "User denied permission for this action."
     }
-  }'
-    ;;
-  esac
+  }
+}'
+  ;;
+esac
 
-  # No response given (e.g. timeout)
-  # Leave the decision to the agent UI.
-  exit 0
-fi
-
-# Assuming this is a notification message
-NOTIFICATION_TYPE="$(echo "$INPUT" | jq -r '.notification_type')"
-if [[ "$NOTIFICATION_TYPE" == "permission_prompt" ]]; then
-  exit
-fi
-
-MESSAGE="$(echo "$INPUT" | jq -r '.message | strings')"
-TITLE="$(echo "$INPUT" | jq -r '.title | strings')"
-if [[ -n "$TITLE" ]]; then
-  TITLE="<b>$TITLE</b>\n"
-fi
-
-notify-send -i "$CLAUDE_CONFIG_ICON_PATH" "$SUMMARY" "${TITLE}${MESSAGE}"
+# No response given (e.g. timeout)
+# Leave the decision to the agent UI.
 exit 0
