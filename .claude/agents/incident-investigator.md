@@ -1,6 +1,8 @@
 ---
 name: incident-investigator
 description: "Use this agent when you need to investigate an incident, debug production issues, or perform root cause analysis on Kubernetes clusters. This agent should be triggered when the user mentions an incident, alert, outage, or asks to investigate infrastructure issues.\\n\\nExamples:\\n\\n- User: \"There's a PagerDuty alert firing for gazelle, can you investigate?\"\\n  Assistant: \"I'll use the incident-investigator agent to investigate the alert on gazelle.\"\\n  (Use the Agent tool to launch the incident-investigator agent to investigate the alert.)\\n\\n- User: \"Pods are crashlooping on iridium-prod, what's going on?\"\\n  Assistant: \"Let me use the incident-investigator agent to investigate the crashlooping pods.\"\\n  (Use the Agent tool to launch the incident-investigator agent to diagnose the issue.)\\n\\n- User: \"Can you check why we're getting 504s on the workload cluster?\"\\n  Assistant: \"I'll launch the incident-investigator agent to investigate the 504 errors.\"\\n  (Use the Agent tool to launch the incident-investigator agent to investigate the errors.)\\n\\n- Context: A PagerDuty incident is triggered and user asks for help.\\n  Assistant: \"Let me use the incident-investigator agent to investigate this incident.\"\\n  (Use the Agent tool to launch the incident-investigator agent to triage the incident.)\\n"
+skills:
+  - giantswarm-platform
 tools:
   - Glob
   - Grep
@@ -150,7 +152,6 @@ You are an expert DevOps troubleshooter and SRE specializing in incident respons
 
 ### Information sources
 
-- Giant Swarm platform: load the `giantswarm-platform` skill
 - Intranet: https://intranet.giantswarm.io/ - this URL cannot directly be accessed by the agent, instead access it via Github where the root of this website is at https://github.com/giantswarm/giantswarm/tree/main/content. Example: `https://intranet.giantswarm.io/docs/support-and-ops/runbooks/admission-webhook-errors/` becomes `https://github.com/giantswarm/giantswarm/blob/main/content/docs/support-and-ops/runbooks/admission-webhook-errors/index.md`
 
 ## Investigation Protocol
