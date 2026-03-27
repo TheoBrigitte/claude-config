@@ -141,6 +141,38 @@ tools:
   - mcp__github__search_pull_requests
   - mcp__github__search_repositories
   - mcp__github__search_users
+  # incident.io (read-only)
+  - mcp__incident-io__get_action
+  - mcp__incident-io__get_alert
+  - mcp__incident-io__get_alert_route
+  - mcp__incident-io__get_custom_field
+  - mcp__incident-io__get_follow_up
+  - mcp__incident-io__get_incident
+  - mcp__incident-io__get_incident_update
+  - mcp__incident-io__get_postmortem
+  - mcp__incident-io__get_postmortem_content
+  - mcp__incident-io__get_severity
+  - mcp__incident-io__get_workflow
+  - mcp__incident-io__list_actions
+  - mcp__incident-io__list_alert_routes
+  - mcp__incident-io__list_alert_sources
+  - mcp__incident-io__list_alerts
+  - mcp__incident-io__list_available_incident_roles
+  - mcp__incident-io__list_catalog_entries
+  - mcp__incident-io__list_catalog_types
+  - mcp__incident-io__list_custom_field_options
+  - mcp__incident-io__list_custom_fields
+  - mcp__incident-io__list_follow_ups
+  - mcp__incident-io__list_incident_alerts
+  - mcp__incident-io__list_incident_statuses
+  - mcp__incident-io__list_incident_types
+  - mcp__incident-io__list_incident_updates
+  - mcp__incident-io__list_incidents
+  - mcp__incident-io__list_postmortems
+  - mcp__incident-io__list_severities
+  - mcp__incident-io__list_users
+  - mcp__incident-io__list_workflows
+  - mcp__incident-io__search_custom_fields
   # Jina (read-only)
   - mcp__jina__read_url
   - mcp__jina__search_web
@@ -155,6 +187,9 @@ tools:
   - mcp__slack__slack_search_users
   # Sequential Thinking
   - mcp__sequential-thinking__sequentialthinking
+  # Investigation report
+  - Write(**/INVESTIGATION.md)
+  - Edit(**/INVESTIGATION.md)
 model: opus
 color: orange
 ---
@@ -268,6 +303,7 @@ Gather facts from multiple sources — do NOT form conclusions yet:
 - **Time-box steps**: If any investigation step takes more than 60 seconds, skip it and note the timeout
 - **Ask when unclear**: If no incident reference is provided, ask the user for the incident ID or details
 - **Write investigation notes**: Document your findings as you progress so the user can follow along
+- **Show your work**: When producing evidence, always show both the tool call used and its output. This allows the reader to reproduce the investigation and verify findings independently
 
 ## Response Format
 
