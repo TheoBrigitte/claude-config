@@ -39,12 +39,12 @@ After the context-gathering phase completes, proceed with incident management �
 2. Skip
 
 ### Creating a new incident:
-Use `mcp__incident-io__create_incident` to create a new incident with the investigation findings (summary, severity, affected components).
+Create a new incident in incident.io with the investigation findings (summary, severity, affected components).
 
 ### Posting to the incident channel:
 After creating the incident (or when posting to an existing incident channel):
-1. Find the incident's Slack channel (incident.io auto-creates `#inc-*` channels — search for it using `mcp__slack__slack_search_channels`)
-2. Send the investigation report directly into the channel using `mcp__slack__slack_send_message` — do NOT draft, send it immediately
+1. Find the incident's Slack channel (incident.io auto-creates `#inc-*` channels)
+2. Send the investigation report directly into the channel — do NOT draft, send it immediately
 
 ### Report format for Slack:
 Adapt the investigation report to be Slack-friendly — use Slack markdown formatting, keep it concise, and include the key sections (Summary, Root Cause, Recommended Actions)

@@ -85,26 +85,26 @@ Parse the context you received and extract key search terms:
 - Specific app or Helm release names
 - Timeline of when symptoms started
 
-If no prior context was provided, fetch PagerDuty incident details using `mcp__pagerduty__get_incident` and `mcp__pagerduty__list_alerts_from_incident` to bootstrap your search terms.
+If no prior context was provided, fetch PagerDuty incident details and list its alerts to bootstrap your search terms.
 
 ### Step 2: Search sources in parallel
 Using these search terms, run the following searches **in parallel**:
 
 #### PagerDuty
-- Search for similar recent incidents on the same service or cluster using `mcp__pagerduty__list_incidents` — filter by service ID or scan titles for matching keywords
-- Do **NOT** use `mcp__pagerduty__get_past_incidents` or `mcp__pagerduty__get_related_incidents` — these tools do not work
+- List recent incidents and scan the results for matching keywords
+- Do **NOT** use `get_past_incidents` or `get_related_incidents` — these tools do not work
 
 #### Slack
-- Search for recent messages mentioning the cluster name (e.g., `gazelle`, `iridium-prod`) using `mcp__slack__slack_search_public_and_private`
-- Search for active incident channels (`#inc-*`) related to the cluster or component using `mcp__slack__slack_search_channels`
+- Search public and private Slack messages mentioning the cluster name (e.g., `gazelle`, `iridium-prod`)
+- Search for active incident channels (`#inc-*`) related to the cluster or component
 - If you find relevant threads, read them for additional detail
 
 #### GitHub (giantswarm organization)
-- Search for recent issues and pull requests mentioning the cluster name, affected component, or error messages using `mcp__github__search_issues` and `mcp__github__search_pull_requests` scoped to `org:giantswarm`
-- If a specific app or component is involved, check its repo (`giantswarm/{component}[-app]`) for recent commits and releases using `mcp__github__list_commits` and `mcp__github__list_releases`
+- Search for recent issues and pull requests mentioning the cluster name, affected component, or error messages — scope searches to `org:giantswarm`
+- If a specific app or component is involved, check its repo (`giantswarm/{component}[-app]`) for recent commits and releases
 
 #### incident.io
-- List recent incidents using `mcp__incident-io__list_incidents` — filter or scan for ones matching the cluster name or affected components
+- List recent incidents and scan for ones matching the cluster name or affected components
 - If you find matching incidents, get their details and updates
 
 ## Output Format
