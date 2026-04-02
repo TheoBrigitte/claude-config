@@ -20,10 +20,8 @@ import (
 )
 
 const (
-	grafanaURL         = "http://localhost:3000"
 	grafanaNamespace   = "monitoring"
 	grafanaService     = "svc/grafana"
-	grafanaLocalPort   = "3000"
 	grafanaServicePort = "3000"
 	serviceAccountName = "claude"
 	grafanaSecretName  = "grafana"
@@ -75,24 +73,32 @@ func runMcpGrafanaHook(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Step 1: Start kubectl port-forward (skip if port already open)
-	if portOpen(grafanaLocalPort) {
-		log.Warn().Msg("port " + grafanaLocalPort + " already open, skipping port-forward")
-	} else {
-		log.Debug().Msg("starting kubectl port-forward to grafana")
-		pfCmd := exec.Command("kubectl", "--context", kubeCtx, "--namespace", grafanaNamespace,
-			"port-forward", grafanaService, grafanaLocalPort+":"+grafanaServicePort)
-		pfCmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
-		if err := pfCmd.Start(); err != nil {
-			return fmt.Errorf("failed to start port-forward: %w", err)
-		}
-		log.Debug().Int("pid", pfCmd.Process.Pid).Msg("port-forward started")
+	// Step 1: Pick a random free port and start kubectl port-forward
+	localPort, err := freePort()
+	if err != nil {
+		return fmt.Errorf("failed to find free port: %w", err)
+	}
+	log.Debug().Str("port", localPort).Msg("selected free port for grafana")
 
-		if err := waitForPort(grafanaLocalPort, 30*time.Second); err != nil {
-			_ = pfCmd.Process.Kill()
-			return fmt.Errorf("port-forward not ready: %w", err)
-		}
-		log.Debug().Msg("port-forward is ready")
+	grafanaURL := fmt.Sprintf("http://localhost:%s", localPort)
+
+	log.Debug().Msg("starting kubectl port-forward to grafana")
+	pfCmd := exec.Command("kubectl", "--context", kubeCtx, "--namespace", grafanaNamespace,
+		"port-forward", grafanaService, localPort+":"+grafanaServicePort)
+	pfCmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
+	if err := pfCmd.Start(); err != nil {
+		return fmt.Errorf("failed to start port-forward: %w", err)
+	}
+	log.Debug().Int("pid", pfCmd.Process.Pid).Msg("port-forward started")
+
+	if err := waitForPort(localPort, 30*time.Second); err != nil {
+		_ = pfCmd.Process.Kill()
+		return fmt.Errorf("port-forward not ready: %w", err)
+	}
+	log.Debug().Msg("port-forward is ready")
+
+	if err := os.Setenv("GRAFANA_URL", grafanaURL); err != nil {
+		return fmt.Errorf("failed to set GRAFANA_URL env var: %w", err)
 	}
 
 	// Step 2: Get Grafana org ID from GrafanaOrganization CR
@@ -123,13 +129,13 @@ func runMcpGrafanaHook(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to set GRAFANA_PASSWORD env var: %w", err)
 	}
 
-	saID, err := findServiceAccount(adminUser, adminPass, serviceAccountName, orgID)
+	saID, err := findServiceAccount(adminUser, adminPass, serviceAccountName, orgID, grafanaURL)
 	if err != nil {
 		return fmt.Errorf("failed to search service accounts: %w", err)
 	}
 
 	if saID == 0 {
-		saID, err = createServiceAccount(adminUser, adminPass, serviceAccountName, orgID)
+		saID, err = createServiceAccount(adminUser, adminPass, serviceAccountName, orgID, grafanaURL)
 		if err != nil {
 			return fmt.Errorf("failed to create service account: %w", err)
 		}
@@ -139,7 +145,7 @@ func runMcpGrafanaHook(cmd *cobra.Command, args []string) error {
 	}
 
 	tokenName := "claude-" + strconv.FormatInt(time.Now().Unix(), 10)
-	token, err := createServiceAccountToken(adminUser, adminPass, saID, tokenName, orgID)
+	token, err := createServiceAccountToken(adminUser, adminPass, saID, tokenName, orgID, grafanaURL)
 	if err != nil {
 		return fmt.Errorf("failed to create service account token: %w", err)
 	}
@@ -158,6 +164,18 @@ func runMcpGrafanaHook(cmd *cobra.Command, args []string) error {
 	log.Debug().Msg("setting GRAFANA_SERVICE_ACCOUNT_TOKEN environment variable for this session")
 	return os.Setenv("GRAFANA_SERVICE_ACCOUNT_TOKEN", token)
 	//}
+}
+
+// freePort asks the OS for a random available port by binding to :0,
+// then immediately closing the listener and returning the port number.
+func freePort() (string, error) {
+	l, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return "", err
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	l.Close()
+	return strconv.Itoa(port), nil
 }
 
 func portOpen(port string) bool {
@@ -231,7 +249,7 @@ func getGrafanaOrgID(kubeCtx string) (string, error) {
 	return orgID, nil
 }
 
-func grafanaRequest(method, path, adminUser, adminPass, orgID string, body interface{}) (*http.Response, error) {
+func grafanaRequest(method, path, adminUser, adminPass, orgID, baseURL string, body interface{}) (*http.Response, error) {
 	var reqBody io.Reader
 	if body != nil {
 		data, err := json.Marshal(body)
@@ -241,7 +259,7 @@ func grafanaRequest(method, path, adminUser, adminPass, orgID string, body inter
 		reqBody = bytes.NewReader(data)
 	}
 
-	req, err := http.NewRequest(method, grafanaURL+path, reqBody)
+	req, err := http.NewRequest(method, baseURL+path, reqBody)
 	if err != nil {
 		return nil, err
 	}
@@ -253,8 +271,8 @@ func grafanaRequest(method, path, adminUser, adminPass, orgID string, body inter
 	return http.DefaultClient.Do(req)
 }
 
-func findServiceAccount(adminUser, adminPass, name, orgID string) (int, error) {
-	resp, err := grafanaRequest("GET", "/api/serviceaccounts/search?query="+name, adminUser, adminPass, orgID, nil)
+func findServiceAccount(adminUser, adminPass, name, orgID, baseURL string) (int, error) {
+	resp, err := grafanaRequest("GET", "/api/serviceaccounts/search?query="+name, adminUser, adminPass, orgID, baseURL, nil)
 	if err != nil {
 		return 0, err
 	}
@@ -283,8 +301,8 @@ func findServiceAccount(adminUser, adminPass, name, orgID string) (int, error) {
 	return 0, nil
 }
 
-func createServiceAccount(adminUser, adminPass, name, orgID string) (int, error) {
-	resp, err := grafanaRequest("POST", "/api/serviceaccounts", adminUser, adminPass, orgID, map[string]interface{}{
+func createServiceAccount(adminUser, adminPass, name, orgID, baseURL string) (int, error) {
+	resp, err := grafanaRequest("POST", "/api/serviceaccounts", adminUser, adminPass, orgID, baseURL, map[string]interface{}{
 		"name": name,
 		"role": "Editor",
 	})
@@ -307,8 +325,8 @@ func createServiceAccount(adminUser, adminPass, name, orgID string) (int, error)
 	return result.ID, nil
 }
 
-func createServiceAccountToken(adminUser, adminPass string, saID int, tokenName, orgID string) (string, error) {
-	resp, err := grafanaRequest("POST", fmt.Sprintf("/api/serviceaccounts/%d/tokens", saID), adminUser, adminPass, orgID, map[string]interface{}{
+func createServiceAccountToken(adminUser, adminPass string, saID int, tokenName, orgID, baseURL string) (string, error) {
+	resp, err := grafanaRequest("POST", fmt.Sprintf("/api/serviceaccounts/%d/tokens", saID), adminUser, adminPass, orgID, baseURL, map[string]interface{}{
 		"name": tokenName,
 	})
 	if err != nil {
