@@ -39,14 +39,14 @@ var rootCmd = &cobra.Command{
 	Long: `Launch claude with MCP server configurations.
 
 Claudy flags:
-      --mcp-list              List available MCP servers
+      --mcp-servers list      List available MCP servers
       --mcp-servers strings   MCP servers to launch (comma-separated or repeated)
       --preset string         Use a predefined preset (e.g. sre)
       --preset-list           List available presets
       --sandbox               Run claude inside a sandbox
 
 All other flags are passed through to claude.`,
-	Example: `  claudy --mcp-list
+	Example: `  claudy --mcp-servers list
   claudy --preset sre
   claudy --mcp-servers github,pagerduty
   claudy --mcp-servers github --mcp-servers pagerduty
@@ -77,8 +77,6 @@ func parseArgs(args []string) parsedArgs {
 			p.help = true
 		case args[i] == "--sandbox":
 			p.sandbox = true
-		case args[i] == "--mcp-list":
-			p.mcpList = true
 		case args[i] == "--preset-list":
 			p.presetList = true
 		case (args[i] == "--preset" || args[i] == "-p") && i+1 < len(args):
@@ -86,6 +84,9 @@ func parseArgs(args []string) parsedArgs {
 			p.presetName = args[i]
 		case strings.HasPrefix(args[i], "--preset="):
 			p.presetName = strings.TrimPrefix(args[i], "--preset=")
+		case args[i] == "--mcp-servers" && i+1 < len(args) && args[i+1] == "list":
+			i++
+			p.mcpList = true
 		case args[i] == "--mcp-servers" && i+1 < len(args):
 			i++
 			for s := range strings.SplitSeq(args[i], ",") {
