@@ -8,11 +8,9 @@ SESSION_ID="$(uuidgen)"
 WORKDIR="${CLAUDE_CONFIG_SANDBOX_DIR%/}/${SESSION_ID}"
 mkdir "$WORKDIR"
 
-# Create claude config directory
+# Copy claude configuration to workdir, excluding projects and debug directories which may contain large files and are not needed for the session
 CLAUDE_CONFIG_DIR="$WORKDIR/.claude_config"
 mkdir "$CLAUDE_CONFIG_DIR"
-
-# Copy claude configuration to workdir, excluding projects and debug directories which may contain large files and are not needed for the session
 rsync -aP --quiet "$HOME/.claude/" "$CLAUDE_CONFIG_DIR/" \
   --exclude "projects" \
   --exclude "debug"
@@ -35,6 +33,7 @@ bwrap \
     --ro-bind /opt/claude-code/ /opt/claude-code/ \
     --ro-bind "$HOME/.gitconfig" "$HOME/.gitconfig" \
     --ro-bind "$HOME/.local" "$HOME/.local" \
+    --ro-bind "$CLAUDE_CONFIG_MCP_DIR" "$CLAUDE_CONFIG_MCP_DIR" \
     --bind "$CLAUDE_CONFIG_DIR" "$HOME/.claude" \
     --bind "$WORKDIR/.claude.json" "$HOME/.claude.json" \
     --bind "$WORKDIR" "$WORKDIR" \
