@@ -1,7 +1,9 @@
 {
   "env": {
     "DISABLE_AUTOUPDATER": "1",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
+    "CLAUDE_CODE_DISABLE_1M_CONTEXT": "1",
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1"
   },
   "attribution": {
     "commit": "",
@@ -200,7 +202,38 @@
       "mcp__slack__slack_search_public",
       "mcp__slack__slack_search_public_and_private",
       "mcp__slack__slack_search_users",
-      "mcp__sequential-thinking__sequentialthinking"
+      "mcp__sequential-thinking__sequentialthinking",
+      "mcp__incident-io__get_action",
+      "mcp__incident-io__get_alert",
+      "mcp__incident-io__get_alert_route",
+      "mcp__incident-io__get_custom_field",
+      "mcp__incident-io__get_follow_up",
+      "mcp__incident-io__get_incident",
+      "mcp__incident-io__get_incident_update",
+      "mcp__incident-io__get_postmortem",
+      "mcp__incident-io__get_postmortem_content",
+      "mcp__incident-io__get_severity",
+      "mcp__incident-io__get_workflow",
+      "mcp__incident-io__list_actions",
+      "mcp__incident-io__list_alert_routes",
+      "mcp__incident-io__list_alert_sources",
+      "mcp__incident-io__list_alerts",
+      "mcp__incident-io__list_available_incident_roles",
+      "mcp__incident-io__list_catalog_entries",
+      "mcp__incident-io__list_catalog_types",
+      "mcp__incident-io__list_custom_field_options",
+      "mcp__incident-io__list_custom_fields",
+      "mcp__incident-io__list_follow_ups",
+      "mcp__incident-io__list_incident_alerts",
+      "mcp__incident-io__list_incident_statuses",
+      "mcp__incident-io__list_incident_types",
+      "mcp__incident-io__list_incident_updates",
+      "mcp__incident-io__list_incidents",
+      "mcp__incident-io__list_postmortems",
+      "mcp__incident-io__list_severities",
+      "mcp__incident-io__list_users",
+      "mcp__incident-io__list_workflows",
+      "mcp__incident-io__search_custom_fields"
     ],
     "deny": [],
     "ask": [
