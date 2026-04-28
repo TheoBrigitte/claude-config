@@ -8,7 +8,7 @@
         "pagerduty-mcp"
       ],
       "env": {
-        "PAGERDUTY_USER_API_KEY": "${TF_VAR_pagerduty_token}"
+        "PAGERDUTY_USER_API_KEY": "${PAGERDUTY_USER_API_KEY}"
       }
     }
   }

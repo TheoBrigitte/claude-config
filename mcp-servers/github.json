@@ -3,7 +3,7 @@
     "github": {
       "description": "Interact with GitHub repos, PRs, issues, commits, and branches via the GitHub API.",
       "type": "http",
-      "url": "https://api.githubcopilot.com/mcp/",
+      "url": "https://api.githubcopilot.com/mcp",
       "headers": {
         "Authorization": "Bearer ${GITHUB_MCP_SERVER_TOKEN}"
       }

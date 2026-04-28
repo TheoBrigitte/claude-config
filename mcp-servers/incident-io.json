@@ -1,15 +1,9 @@
 {
   "mcpServers": {
-    "incident-io": {
+    "incident.io": {
       "description": "Manage incident.io incidents, actions, follow-ups, and post-mortems.",
-      "command": "go",
-      "args":[
-        "run",
-        "github.com/incident-io/incidentio-mcp-golang/cmd/mcp-server@latest"
-      ],
-      "env": {
-        "INCIDENT_IO_API_KEY": "${INCIDENT_IO_API_KEY}"
-      }
+      "type": "http",
+      "url": "https://mcp.incident.io/mcp"
     }
   }
 }
