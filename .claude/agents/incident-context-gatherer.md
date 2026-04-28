@@ -137,4 +137,4 @@ Compile your findings into a structured context block:
 2. **Be concise** — summarize findings, don't dump raw search results
 3. **Flag high-signal items** — highlight anything that looks directly related (recent deploy, known bug, ongoing incident)
 4. **Note what you didn't find** — if a search returned nothing relevant, say so briefly
-5. **Include links** — provide links to Slack threads, GitHub issues/PRs, and incidents so the reader can drill down
+5. **Include links** — provide direct links to Slack threads, GitHub issues/PRs, and incidents so the reader can drill down

@@ -28,7 +28,7 @@ After the context-gathering phase completes, proceed with incident management �
 
 ### Present options via `AskUserQuestion`:
 
-**If a matching incident channel and/or thread was found**, present options like:
+**If a matching Slack incident channel and/or thread was found**, present options like:
 1. Post to `#inc-<incident-name>` (the matching channel)
 2. Post in thread (link to the matching thread)
 3. Create a new incident via incident.io
@@ -44,7 +44,4 @@ Create a new incident in incident.io with the investigation findings (summary, s
 ### Posting to the incident channel:
 After creating the incident (or when posting to an existing incident channel):
 1. Find the incident's Slack channel (incident.io auto-creates `#inc-*` channels)
-2. Send the investigation report directly into the channel — do NOT draft, send it immediately
-
-### Report format for Slack:
-Adapt the investigation report to be Slack-friendly — use Slack markdown formatting, keep it concise, and include the key sections (Summary, Root Cause, Recommended Actions)
+2. Send the investigation report into the Slack channel and upload the full report as canvas — do NOT draft, send it immediately
