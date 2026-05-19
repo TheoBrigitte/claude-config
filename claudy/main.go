@@ -44,6 +44,8 @@ Claudy flags:
       --preset string         Use a predefined preset (e.g. sre)
       --preset-list           List available presets
       --sandbox               Run claude inside a sandbox
+      --no-sandbox            Do not run claude inside a sandbox
+      --yolo                  (danger) run with permissions bypassing
 
 All other flags are passed through to claude.`,
 	Example: `  claudy --mcp-servers list
@@ -65,18 +67,25 @@ type parsedArgs struct {
 	presetName string
 	mcpServers []string
 	userArgs   []string
+	yolo       bool
 }
 
 // parseArgs extracts claudy-specific flags from args and returns the remaining
 // args to pass through to claude.
 func parseArgs(args []string) parsedArgs {
 	var p parsedArgs
+	p.sandbox = true // default to sandbox enabled
+
 	for i := 0; i < len(args); i++ {
 		switch {
 		case args[i] == "--help" || args[i] == "-h":
 			p.help = true
 		case args[i] == "--sandbox":
 			p.sandbox = true
+		case args[i] == "--no-sandbox":
+			p.sandbox = false
+		case args[i] == "--yolo":
+			p.yolo = true
 		case args[i] == "--preset-list":
 			p.presetList = true
 		case (args[i] == "--preset" || args[i] == "-p") && i+1 < len(args):
@@ -261,6 +270,11 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 		claudeArgs = append(claudeArgs, mcpConfigs...)
 	}
 	// claudeArgs = append(claudeArgs, userArgs...)
+
+	if p.yolo {
+		claudeArgs = append(claudeArgs, "--allow-dangerously-skip-permissions")
+		claudeArgs = append(claudeArgs, "--dangerously-skip-permissions")
+	}
 
 	// Final command
 	claudePath, err := exec.LookPath(claudeCmd)
