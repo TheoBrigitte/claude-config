@@ -25,8 +25,9 @@ const (
 	grafanaServicePort = "3000"
 	serviceAccountName = "claude"
 	grafanaSecretName  = "grafana"
-	grafanaOrgCRName   = "shared-org"
 )
+
+var grafanaOrgCRName = "shared-org"
 
 //func init() {
 //	rootCmd.AddCommand(mcpGrafanaHookCmd)

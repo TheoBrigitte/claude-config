@@ -41,6 +41,7 @@ var rootCmd = &cobra.Command{
 Claudy flags:
       --mcp-servers list      List available MCP servers
       --mcp-servers strings   MCP servers to launch (comma-separated or repeated)
+      --grafana-org string    Grafana organization name
       --preset string         Use a predefined preset (e.g. sre)
       --preset-list           List available presets
       --sandbox               Run claude inside a sandbox
@@ -88,6 +89,9 @@ func parseArgs(args []string) parsedArgs {
 			p.yolo = true
 		case args[i] == "--preset-list":
 			p.presetList = true
+		case args[i] == "--grafana-org" && i+1 < len(args):
+			i++
+			grafanaOrgCRName = args[i]
 		case (args[i] == "--preset" || args[i] == "-p") && i+1 < len(args):
 			i++
 			p.presetName = args[i]
