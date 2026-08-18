@@ -281,8 +281,25 @@
         "source": "github",
         "repo": "giantswarm/claude-code"
       }
+    },
+    "karpathy-skills": {
+      "source": {
+        "source": "github",
+        "repo": "forrestchang/andrej-karpathy-skills"
+      }
+    },
+    "mattpocock": {
+      "source": {
+        "source": "github",
+        "repo": "mattpocock/skills"
+      }
     }
   },
+  "effortLevel": "high",
+  "tui": "default",
+  "theme": "dark",
+  "autoCompactEnabled": false,
+  "agentPushNotifEnabled": true,
   "voiceEnabled": false,
   "lspServers": {
     "go": {
