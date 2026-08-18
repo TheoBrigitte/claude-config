@@ -46,7 +46,7 @@ Claudy flags:
       --preset-list           List available presets
       --sandbox               Run claude inside a sandbox
       --no-sandbox            Do not run claude inside a sandbox
-      --yolo                  (danger) run with permissions bypassing
+      --yolo                  (danger) bypass permissions and load settings.yolo.json
 
 All other flags are passed through to claude.`,
 	Example: `  claudy --mcp-servers list
@@ -201,6 +201,25 @@ func listPresets() {
 	}
 }
 
+// yoloSettingsPath returns the path to the yolo settings overlay loaded in
+// --yolo mode, or "" if it does not exist. It lives alongside the user's
+// settings.json in the claude config dir (CLAUDE_CONFIG_DIR, default ~/.claude).
+func yoloSettingsPath() string {
+	dir := os.Getenv("CLAUDE_CONFIG_DIR")
+	if dir == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return ""
+		}
+		dir = filepath.Join(home, ".claude")
+	}
+	path := filepath.Join(dir, "settings.yolo.json")
+	if _, err := os.Stat(path); err != nil {
+		return ""
+	}
+	return path
+}
+
 func run(cmd *cobra.Command, rawArgs []string) error {
 	p := parseArgs(rawArgs)
 
@@ -278,6 +297,11 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 	if p.yolo {
 		claudeArgs = append(claudeArgs, "--allow-dangerously-skip-permissions")
 		claudeArgs = append(claudeArgs, "--dangerously-skip-permissions")
+		if s := yoloSettingsPath(); s != "" {
+			claudeArgs = append(claudeArgs, "--settings", s)
+		} else {
+			log.Warn().Msg("yolo settings file not found, skipping --settings overlay")
+		}
 	}
 
 	// Final command
