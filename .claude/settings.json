@@ -273,7 +273,11 @@
     "padding": 0
   },
   "enabledPlugins": {
-    "gopls-lsp@claude-plugins-official": true
+    "gopls-lsp@claude-plugins-official": true,
+    "gs-godev@giantswarm": true,
+    "gs-product@giantswarm": true,
+    "gs-sre@giantswarm": true,
+    "mattpocock-skills@mattpocock": true
   },
   "extraKnownMarketplaces": {
     "giantswarm": {
