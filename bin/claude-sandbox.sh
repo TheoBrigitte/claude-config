@@ -26,6 +26,7 @@ bwrap \
     --dev-bind  /dev                      /dev                      \
     --proc      /proc                                               \
     --tmpfs     /tmp                                                \
+    --bind-try  "/tmp/tmux-$(id -u)"      "/tmp/tmux-$(id -u)"      \
     --share-net                                                     \
     --unshare-pid                                                   \
     --die-with-parent                                               \

@@ -265,6 +265,28 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/theo/.claude/hooks/tmux-title.sh"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/home/theo/.claude/hooks/tmux-title.sh"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

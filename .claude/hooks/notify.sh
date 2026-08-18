@@ -10,13 +10,29 @@ TMUX_WINDOW_INDEX="$(tmux display-message -p -F '#{window_index}' -t "$TMUX_PANE
 SUMMARY="Claude #${TMUX_WINDOW_INDEX}"
 CLAUDE_CONFIG_ICON_PATH="${CLAUDE_CONFIG_ICON_PATH:-$HOME/.claude/claude-color.svg}"
 
-# Ring the bell in our own pane so tmux turns the window title red.
-# Hooks have no controlling terminal, so /dev/tty is not usable: ask tmux
-# for the pane's tty and write there. Not stdout, that is the JSON channel.
+# Terminal we are attached to. Hooks get no controlling terminal, so /dev/tty
+# is unusable, and under bwrap /tmp is a tmpfs so the tmux socket is not there
+# either. The claude process up the tree does hold the pane's pty, and /dev is
+# bind-mounted, so walk up and use that.
+terminal() {
+  local pid="$PPID" tty
+  while [[ "$pid" -gt 1 ]]; do
+    tty="$(ps -o tty= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+    if [[ -n "$tty" && "$tty" != "?" ]]; then
+      echo "/dev/$tty"
+      return 0
+    fi
+    pid="$(ps -o ppid= -p "$pid" 2>/dev/null | tr -d '[:space:]')"
+  done
+  return 1
+}
+
+# Ring the bell so tmux turns the window title red.
+# Not stdout: that is the hook's JSON response channel.
 ring_bell() {
-  local pane_tty
-  pane_tty="$(tmux display-message -p -F '#{pane_tty}' -t "$TMUX_PANE" 2>/dev/null)"
-  [[ -n "$pane_tty" ]] && printf '\a' > "$pane_tty"
+  local tty
+  tty="$(terminal)" || return 0
+  printf '\a' > "$tty" 2>/dev/null
 }
 
 # Read hook input
