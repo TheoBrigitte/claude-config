@@ -34,7 +34,7 @@ export CLAUDE_CONFIG_ICON_PATH=/path/to/icon.png                               #
 
 MCP server configurations (JSON), one per server:
 
-`context7` `github` `jina` `kubernetes` `muster` `pagerduty` `playwright` `prometheus` `sequential-thinking` `slack` `time`
+`code-index` `context7` `filesystem` `giantswarm-search` `github` `grafana` `incident-io` `jina` `kubernetes` `memory` `muster` `n8n` `neovim` `pagerduty` `playwright` `prometheus` `sequential-thinking` `slack` `time`
 
 ## 🚀 [claudy/](claudy/)
 
