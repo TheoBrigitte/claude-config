@@ -10,6 +10,15 @@ TMUX_WINDOW_INDEX="$(tmux display-message -p -F '#{window_index}' -t "$TMUX_PANE
 SUMMARY="Claude #${TMUX_WINDOW_INDEX}"
 CLAUDE_CONFIG_ICON_PATH="${CLAUDE_CONFIG_ICON_PATH:-$HOME/.claude/claude-color.svg}"
 
+# Ring the bell in our own pane so tmux turns the window title red.
+# Hooks have no controlling terminal, so /dev/tty is not usable: ask tmux
+# for the pane's tty and write there. Not stdout, that is the JSON channel.
+ring_bell() {
+  local pane_tty
+  pane_tty="$(tmux display-message -p -F '#{pane_tty}' -t "$TMUX_PANE" 2>/dev/null)"
+  [[ -n "$pane_tty" ]] && printf '\a' > "$pane_tty"
+}
+
 # Read hook input
 INPUT="$(cat -)"
 echo "$INPUT" > "/home/theo/projects/ai/notifications-dump/$(uuidgen).json"
@@ -29,11 +38,14 @@ if echo "$INPUT" | jq -e '.hook_event_name != "PermissionRequest"' 1>/dev/null; 
     MESSAGE="<b>$TITLE</b>\n${MESSAGE}"
   fi
 
+  ring_bell
   notify-send -i "$CLAUDE_CONFIG_ICON_PATH" "$SUMMARY" "${MESSAGE}"
   exit 0
 fi
 
 # Handle PermissionRequest messages
+
+ring_bell
 
 # Read the permission request's tool and command from the input
 TOOL_NAME="$(echo "$INPUT" | jq -r '.tool_name | strings')"
