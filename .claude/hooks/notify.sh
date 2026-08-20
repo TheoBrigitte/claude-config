@@ -37,7 +37,7 @@ ring_bell() {
 
 # Read hook input
 INPUT="$(cat -)"
-echo "$INPUT" > "/home/theo/projects/ai/notifications-dump/$(uuidgen).json"
+echo "$INPUT" > "/home/theo/projects/claude/notifications-dump/$(uuidgen).json"
 
 # Handle non permission request, and assume those are Claude noification messages
 if echo "$INPUT" | jq -e '.hook_event_name != "PermissionRequest"' 1>/dev/null; then
