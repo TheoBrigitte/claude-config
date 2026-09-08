@@ -144,8 +144,7 @@ tools:
   # Investigation report
   - Write(**/INVESTIGATION.md)
   - Edit(**/INVESTIGATION.md)
-  # Slack (daily incident summary)
-  - mcp__slack__slack_read_channel
+  # Slack (incident summary)
   - mcp__slack__slack_send_message
 model: opus
 color: orange
@@ -191,16 +190,11 @@ Gather facts from multiple sources — do NOT form conclusions yet:
 3. **Prefer GitOps fixes**: direct apply/edit should only be used for diagnostics and emergencies
 4. **Include both**: immediate fix and long-term improvement recommendations
 
-### Phase 5: Update Daily Summary
+### Phase 5: Post Incident Summary
 
-Once the investigation is done (even if inconclusive), update the daily incident summary in `#oncall-atlas` (https://gigantic.slack.com/archives/C04UMF3KV3K). The whole day's incidents live in **one single message** — never post a new message per alert.
+Once the investigation is done (even if inconclusive), post a one-liner summary of the alert in `#oncall-atlas` (https://gigantic.slack.com/archives/C04UMF3KV3K) with `mcp__slack__slack_send_message`. Send it immediately — do NOT draft it for review.
 
-1. Use `mcp__slack__slack_read_channel` to check today's messages in the channel for an existing daily summary message (posted by you, dated today).
-2. **If today's summary message already exists**: edit it in place (using its timestamp) to add your one-liner as a new line, or to update the existing line if it's about the same `<identifier>` (e.g. status changed from ongoing to resolved). Keep every other line untouched.
-3. **If no summary message exists yet for today**: send a new message containing just your one-liner — this becomes today's summary message that later investigations will edit.
-4. Send/edit immediately — do NOT draft it for review.
-
-One-liner format (one per line in the message):
+One-liner format:
 
 ```
 <status icon> <identifier> - <description>, <links>
