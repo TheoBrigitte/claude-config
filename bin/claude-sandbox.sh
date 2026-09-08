@@ -20,7 +20,8 @@ bwrap \
     --bind      "$HOME/.claude.json"      "$HOME/.claude.json"      \
     --bind      "$HOME/.gnupg"            "$HOME/.gnupg"            \
     --ro-bind   "$HOME/.gitconfig"        "$HOME/.gitconfig"        \
-    --ro-bind   "$HOME/.local"            "$HOME/.local"            \
+    --bind      "$HOME/.local"            "$HOME/.local"            \
+    --bind      "$HOME/pkg"               "$HOME/pkg"               \
     --ro-bind   "$CLAUDE_CONFIG_MCP_DIR"  "$CLAUDE_CONFIG_MCP_DIR"  \
     --bind      "$PWD"                    "$PWD"                    \
     --dev-bind  /dev                      /dev                      \
