@@ -240,9 +240,8 @@
       "Read(**/*secret*)",
       "Read(**/*credentials*)"
     ],
-    "defaultMode": "default"
+    "defaultMode": "auto"
   },
-  "model": "opus",
   "hooks": {
     "PermissionRequest": [
       {
@@ -337,5 +336,6 @@
         ".go": "go"
       }
     }
-  }
+  },
+  "model": "opus[1m]"
 }
