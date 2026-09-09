@@ -3,6 +3,22 @@
 
 set -eu
 
+# Config the *host* Claude executes (hooks, statusline, skills, agents, plugins)
+# or that defines its permissions must not be writable from inside the sandbox;
+# these get re-mounted read-only on top of the writable ~/.claude bind below.
+ro_config=()
+for p in settings.json .env policy-limits.json CLAUDE.md statusline-command.sh \
+         hooks agents skills plugins; do
+    ro_config+=(--ro-bind-try "$HOME/.claude/$p" "$HOME/.claude/$p")
+done
+
+# ~/.local is read-only (it holds unrelated app state and $HOME/.local/bin is on
+# the host PATH); Claude's own state dirs are punched back through as writable.
+rw_state=()
+for p in state/claude state/claude-cli-nodejs state/claude-status share/claude; do
+    rw_state+=(--bind-try "$HOME/.local/$p" "$HOME/.local/$p")
+done
+
 bwrap \
     --uid "$(id -u)"                                                \
     --gid "$(id -g)"                                                \
@@ -22,18 +38,21 @@ bwrap \
     --bind      "$HOME/.claude.json"      "$HOME/.claude.json"      \
     --bind      "$HOME/.gnupg"            "$HOME/.gnupg"            \
     --ro-bind   "$HOME/.gitconfig"        "$HOME/.gitconfig"        \
-    --bind      "$HOME/.local"            "$HOME/.local"            \
-    --bind      "$HOME/pkg"               "$HOME/pkg"               \
+    --ro-bind   "$HOME/.local"            "$HOME/.local"            \
+    "${rw_state[@]}"                                                \
+    --overlay-src "$HOME/pkg"                                       \
+    --tmp-overlay "$HOME/pkg"                                       \
     --ro-bind   "$CLAUDE_CONFIG_MCP_DIR"  "$CLAUDE_CONFIG_MCP_DIR"  \
     --bind      "$PWD"                    "$PWD"                    \
+    "${ro_config[@]}"                                               \
     --ro-bind-try "$HOME/.docker"         "$HOME/.docker"           \
     --symlink   /run                      /var/run                  \
-    --dev-bind  /dev                      /dev                      \
+    --dev       /dev                                                \
     --proc      /proc                                               \
     --tmpfs     /tmp                                                \
     --bind-try  "/tmp/tmux-$(id -u)"      "/tmp/tmux-$(id -u)"      \
+    --unshare-all                                                   \
     --share-net                                                     \
-    --unshare-pid                                                   \
     --die-with-parent                                               \
     --chdir "$PWD"                                                  \
     /usr/bin/claude "$@" # start Claude and pass all arguments through
