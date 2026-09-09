@@ -9,6 +9,8 @@ bwrap \
     --ro-bind   /bin                      /bin                      \
     --ro-bind   /etc/ca-certificates      /etc/ca-certificates      \
     --ro-bind   /etc/hosts                /etc/hosts                \
+    --ro-bind   /etc/passwd               /etc/passwd               \
+    --ro-bind   /etc/group                /etc/group                \
     --ro-bind   /etc/resolv.conf          /etc/resolv.conf          \
     --ro-bind   /etc/ssl                  /etc/ssl                  \
     --ro-bind   /lib                      /lib                      \
@@ -24,6 +26,8 @@ bwrap \
     --bind      "$HOME/pkg"               "$HOME/pkg"               \
     --ro-bind   "$CLAUDE_CONFIG_MCP_DIR"  "$CLAUDE_CONFIG_MCP_DIR"  \
     --bind      "$PWD"                    "$PWD"                    \
+    --ro-bind-try "$HOME/.docker"         "$HOME/.docker"           \
+    --symlink   /run                      /var/run                  \
     --dev-bind  /dev                      /dev                      \
     --proc      /proc                                               \
     --tmpfs     /tmp                                                \
