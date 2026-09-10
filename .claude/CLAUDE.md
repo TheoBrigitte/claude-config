@@ -55,3 +55,10 @@ For multi-step tasks, state a brief plan:
 ```
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+## 5. Never Force Push
+
+**No `git push --force` or `--force-with-lease`. Ever.**
+
+- Rewriting published history is the user's call, not yours.
+- If a push is rejected, stop and report it. Don't force it through.
