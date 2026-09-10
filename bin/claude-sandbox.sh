@@ -53,6 +53,7 @@ bwrap \
     --bind      "$PWD"                    "$PWD"                    \
     "${git_common[@]}"                                              \
     "${ro_config[@]}"                                               \
+    --ro-bind-try "$HOME/.config/gh"      "$HOME/.config/gh"        \
     --ro-bind-try "$HOME/.docker"         "$HOME/.docker"           \
     --symlink   /run                      /var/run                  \
     --dev       /dev                                                \
