@@ -19,6 +19,13 @@ for p in state/claude state/claude-cli-nodejs state/claude-status share/claude; 
     rw_state+=(--bind-try "$HOME/.local/$p" "$HOME/.local/$p")
 done
 
+# In a git worktree or submodule, .git is a gitfile pointing at the main repo's
+# git dir, which lives outside $PWD and must be mounted for git to work.
+git_common=()
+if gitdir=$(git -C "$PWD" rev-parse --path-format=absolute --git-common-dir 2>/dev/null); then
+    git_common+=(--bind "$gitdir" "$gitdir")
+fi
+
 bwrap \
     --uid "$(id -u)"                                                \
     --gid "$(id -g)"                                                \
@@ -44,6 +51,7 @@ bwrap \
     --tmp-overlay "$HOME/pkg"                                       \
     --ro-bind   "$CLAUDE_CONFIG_MCP_DIR"  "$CLAUDE_CONFIG_MCP_DIR"  \
     --bind      "$PWD"                    "$PWD"                    \
+    "${git_common[@]}"                                              \
     "${ro_config[@]}"                                               \
     --ro-bind-try "$HOME/.docker"         "$HOME/.docker"           \
     --symlink   /run                      /var/run                  \
