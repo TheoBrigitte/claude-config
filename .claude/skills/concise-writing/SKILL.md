@@ -16,6 +16,17 @@ Write only what is. Never what is not.
 7. **Cut filler.** "It is important to note that", "as you can see", "let's dive in", "in conclusion".
 8. **Active voice.** "The handler validates the token." Not "The token is validated by the handler."
 9. **Lists over paragraphs** when items are parallel.
+10. **Reuse the same wording.** One verb per action, one noun per thing, for the whole text. Never vary vocabulary for style. Keep parallel items in an identical sentence shape.
+
+## Consistent vocabulary
+
+Pick a verb for an action and keep it. "Added" stays "added" — not "introduced", then "created", then "wired up". Same for nouns: a `cluster` is a `cluster` everywhere, not sometimes an `environment` or an `install`.
+
+Bad:
+> Added a retry to the poller. Introduced a backoff in the uploader. Wired up a retry in the webhook handler.
+
+Good:
+> Added a retry to the poller. Added a backoff to the uploader. Added a retry to the webhook handler.
 
 ## Examples
 
