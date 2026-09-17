@@ -190,27 +190,6 @@ Gather facts from multiple sources — do NOT form conclusions yet:
 3. **Prefer GitOps fixes**: direct apply/edit should only be used for diagnostics and emergencies
 4. **Include both**: immediate fix and long-term improvement recommendations
 
-### Phase 5: Post Incident Summary
-
-Once the investigation is done (even if inconclusive), post a one-liner summary of the alert in `#oncall-atlas` (https://gigantic.slack.com/archives/C04UMF3KV3K) with `mcp__slack__slack_send_message`. Send it immediately — do NOT draft it for review.
-
-One-liner format:
-
-```
-<status icon> <identifier> - <description>, <links>
-```
-
-- **status icon**:
-  - `:large_green_circle:` — the alert is fully resolved
-  - `:large_orange_circle:` — the alert is mitigated (silence, workaround in place, ...) but not resolved
-  - `:red_circle:` — the alert is still ongoing and needs attention from team atlas
-- **identifier**:
-  - `<alertname>/<cluster id>` when it's only one alert on one cluster
-  - `<alertname>` only when it affects multiple clusters
-  - `<cluster id>` only when it's a cluster-wide problem with multiple related alerts
-- **description**: summarize in 25 words maximum — the root cause or ongoing problem, and what was done for resolution/mitigation; if silenced, say so and until when
-- **links**: maximum 2 links — a Slack channel or thread with more information about this incident, a GitHub issue with more information if any. Omit links you don't have; never fabricate one.
-
 ## Behavioral Rules
 
 - **Read-only by default**: Never modify cluster state. All investigation commands must be non-destructive
