@@ -32,8 +32,43 @@ esac
 home=$(realpath -e "$HOME")
 uid=$(id -u)
 
+# Secrets that no tool needs to do its job: directories become tmpfs, files
+# become /dev/null. ~/.ssh and ~/.gnupg stay, git needs them.
+masked_dirs=(
+    "$HOME/.1password"
+    "$HOME/.config/1Password"
+    "$HOME/.config/Bitwarden"
+    "$HOME/.config/BraveSoftware"
+    "$HOME/.config/chromium"
+    "$HOME/.config/google-chrome"
+    "$HOME/.mozilla"
+)
+masked_files=(
+    "$HOME/.aws/credentials"
+    "$HOME/.bash_history"
+    "$HOME/.zsh_history"
+)
+
+# TODO: add the variables you want Claude to see. The environment is cleared,
+# so anything not listed here does not reach the jail.
+keep_env=(
+    HOME
+    USER
+    LOGNAME
+    SHELL
+    TERM
+    COLORTERM
+    LANG
+    PATH
+    ANTHROPIC_API_KEY
+    CLAUDE_CONFIG_MCP_DIR
+    CLAUDE_CONFIG_ICON_PATH
+    KUBECONFIG
+)
+
 # Mounts every mode shares.
 common=(
+    --clearenv
     --uid "$uid"
     --gid "$(id -g)"
     --ro-bind     /usr                  /usr
@@ -52,6 +87,22 @@ common=(
     --setenv      CLAUDE_JAIL           "$mode"
     --die-with-parent
 )
+
+# network-only already has a tmpfs home, nothing to mask there.
+mask=()
+if [ "$mode" != network-only ]; then
+    for p in "${masked_dirs[@]}"; do
+        [ -d "$p" ] && mask+=(--tmpfs "$p")
+    done
+    for p in "${masked_files[@]}"; do
+        [ -f "$p" ] && mask+=(--ro-bind /dev/null "$p")
+    done
+fi
+
+env_args=()
+for v in "${keep_env[@]}"; do
+    [ -n "${!v:-}" ] && env_args+=(--setenv "$v" "${!v}")
+done
 
 mounts=()
 unshare=(--unshare-all --share-net)
@@ -141,7 +192,9 @@ fi
 # No exec: the shell stays around to clean up $scratch when bwrap exits.
 bwrap \
     "${common[@]}" \
+    "${env_args[@]}" \
     "${mounts[@]}" \
+    "${mask[@]}" \
     "${unshare[@]}" \
     --chdir "$workdir" \
     /usr/bin/claude "$@"
