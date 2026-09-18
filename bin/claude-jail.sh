@@ -11,9 +11,9 @@
 #                 Only the current directory is bound read-write onto the
 #                 host. Network on.
 #   network-only  no host filesystem: tmpfs home, tmpfs workspace. Only
-#                 ~/.claude comes in, through an overlay, so Claude can start
-#                 and authenticate. Network on. The current directory is not
-#                 mounted.
+#                 ~/.claude comes in, read-write, so Claude can start,
+#                 authenticate and keep its history. Network on. The current
+#                 directory is not mounted.
 #   docker        standard plus a nested rootless podman, with its storage in
 #                 tmpfs and its cgroups in your own delegated cgroup subtree.
 #                 `docker` runs podman. Containers cannot touch the host.
@@ -112,23 +112,14 @@ unshare=(--unshare-all --share-net)
 workdir=
 scratch=$(mktemp -d)
 
-# Claude refreshes its OAuth token in place and the refresh token rotates, so a
-# refresh lost with the overlay leaves the host holding a token the server has
-# already invalidated. The home overlay therefore keeps its upper layer in
-# $scratch, and only the credentials file is copied back out on exit. Every
-# other write is still discarded.
-upper="$scratch/upper"
-work="$scratch/work"
-mkdir -p "$upper" "$work"
-creds=$(realpath -m "$home/.claude/.credentials.json")
-creds_rel=
-save_creds() {
-    if [ -n "$creds_rel" ] && [ -f "$upper/$creds_rel" ]; then
-        cat "$upper/$creds_rel" > "$creds"
-        chmod 600 "$creds"
-    fi
-}
-trap 'save_creds; rm -rf "$scratch"' EXIT
+trap 'rm -rf "$scratch"' EXIT
+
+# ~/.claude is bound read-write on the host: history, sessions and the OAuth
+# token survive the jail. Claude refreshes that token in place and the refresh
+# token rotates, so a refresh dropped with the overlay invalidates the token on
+# the host too. Hooks are the exception: they run unsandboxed on the host, so
+# the jail sees hooks/ and settings.json read-only.
+cdir=$(realpath -e "$home/.claude")
 
 if [ "$mode" = network-only ]; then
     # Nothing of the host filesystem, except Claude's own config and
@@ -136,12 +127,11 @@ if [ "$mode" = network-only ]; then
     cp "$home/.claude.json" "$scratch/claude.json"
     mounts+=(
         --tmpfs       "$home"
-        --overlay-src "$home/.claude"
-        --overlay     "$upper" "$work" "$home/.claude"
+        --bind        "$cdir" "$home/.claude"
         --bind        "$scratch/claude.json" "$home/.claude.json"
         --tmpfs       /work
     )
-    creds_rel=.credentials.json
+    cdest="$home/.claude"
     workdir=/work
 else
     workdir=$(realpath -e "$PWD") || exit 64
@@ -154,16 +144,21 @@ else
         exit 64
     fi
 
-    # Writes to the home overlay are discarded on exit, so sessions, /model and
-    # plugin installs do not persist.
+    # Writes to the home overlay are discarded on exit, so everything outside
+    # ~/.claude and the current directory does not persist.
     mounts+=(
         --overlay-src "$home"
-        --overlay     "$upper" "$work" "$home"
+        --tmp-overlay "$home"
         --ro-bind-try "${CLAUDE_CONFIG_MCP_DIR:-/nonexistent}" "${CLAUDE_CONFIG_MCP_DIR:-/nonexistent}"
+        --bind        "$cdir" "$cdir"
         --bind        "$workdir" "$workdir"
     )
-    creds_rel=${creds#"$home"/}
+    cdest="$cdir"
 fi
+
+for p in hooks settings.json; do
+    [ -e "$cdir/$p" ] && mounts+=(--ro-bind "$cdir/$p" "$cdest/$p")
+done
 
 if [ "$mode" = docker ]; then
     # Podman runs with a single uid mapping: empty subuid/subgid files keep it
