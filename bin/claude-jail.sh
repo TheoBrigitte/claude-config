@@ -118,7 +118,8 @@ trap 'rm -rf "$scratch"' EXIT
 # token survive the jail. Claude refreshes that token in place and the refresh
 # token rotates, so a refresh dropped with the overlay invalidates the token on
 # the host too. Hooks are the exception: they run unsandboxed on the host, so
-# the jail sees hooks/ and settings.json read-only.
+# the jail sees hooks/, settings.json and plugins/ read-only. Plugin installs
+# therefore do not persist.
 cdir=$(realpath -e "$home/.claude")
 
 if [ "$mode" = network-only ]; then
@@ -156,7 +157,7 @@ else
     cdest="$cdir"
 fi
 
-for p in hooks settings.json; do
+for p in hooks settings.json plugins; do
     [ -e "$cdir/$p" ] && mounts+=(--ro-bind "$cdir/$p" "$cdest/$p")
 done
 
