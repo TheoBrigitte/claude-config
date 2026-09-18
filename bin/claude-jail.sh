@@ -67,7 +67,15 @@ keep_env=(
     CLAUDE_CONFIG_MCP_DIR
     CLAUDE_CONFIG_ICON_PATH
     KUBECONFIG
+    GH_TOKEN
 )
+
+# gh keeps its token in the login keyring, which the jail cannot reach: it has
+# no session bus. Resolve the token on the host and pass it in, so the keyring
+# itself stays outside.
+if [ -z "${GH_TOKEN:-}" ]; then
+    GH_TOKEN=$(gh auth token 2>/dev/null) || true
+fi
 
 # Mounts every mode shares.
 common=(
