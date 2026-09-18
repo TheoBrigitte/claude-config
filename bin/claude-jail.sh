@@ -68,6 +68,7 @@ keep_env=(
     CLAUDE_CONFIG_ICON_PATH
     KUBECONFIG
     GH_TOKEN
+    GPG_TTY
 )
 
 # gh keeps its token in the login keyring, which the jail cannot reach: it has
@@ -95,6 +96,9 @@ common=(
     --proc        /proc
     --tmpfs       /tmp
     --tmpfs       "/run/user/$uid"
+    # git signs commits, so gpg needs the socket of the agent already running
+    # on the host, the one holding the unlocked key.
+    --ro-bind-try "/run/user/$uid/gnupg"  "/run/user/$uid/gnupg"
     --setenv      CLAUDE_JAIL           "$mode"
     --die-with-parent
 )
