@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # Run Claude in a bubblewrap jail, at one of three isolation levels.
 #
-# Usage: claude-jail.sh [-m MODE] [writable-dir] [claude args...]
+# Usage: claude-jail.sh [-m MODE] [claude args...]
+#
+# The current directory is the one writable path.
 #
 #   standard      (default) the whole home directory is visible through a
 #                 throwaway overlay, so every tool config (kube, aws, gh,
 #                 docker, gcloud, ...) is there and writes to it are discarded.
-#                 Only <writable-dir> is bound read-write onto the host.
-#                 Network on.
+#                 Only the current directory is bound read-write onto the
+#                 host. Network on.
 #   network-only  no host filesystem: tmpfs home, tmpfs workspace. Only
 #                 ~/.claude comes in, through an overlay, so Claude can start
-#                 and authenticate. Network on. Takes no <writable-dir>.
+#                 and authenticate. Network on. The current directory is not
+#                 mounted.
 #   docker        standard plus a nested rootless podman, with its storage in
 #                 tmpfs and its cgroups in your own delegated cgroup subtree.
 #                 `docker` runs podman. Containers cannot touch the host.
@@ -108,7 +111,24 @@ mounts=()
 unshare=(--unshare-all --share-net)
 workdir=
 scratch=$(mktemp -d)
-trap 'rm -rf "$scratch"' EXIT
+
+# Claude refreshes its OAuth token in place and the refresh token rotates, so a
+# refresh lost with the overlay leaves the host holding a token the server has
+# already invalidated. The home overlay therefore keeps its upper layer in
+# $scratch, and only the credentials file is copied back out on exit. Every
+# other write is still discarded.
+upper="$scratch/upper"
+work="$scratch/work"
+mkdir -p "$upper" "$work"
+creds=$(realpath -m "$home/.claude/.credentials.json")
+creds_rel=
+save_creds() {
+    if [ -n "$creds_rel" ] && [ -f "$upper/$creds_rel" ]; then
+        cat "$upper/$creds_rel" > "$creds"
+        chmod 600 "$creds"
+    fi
+}
+trap 'save_creds; rm -rf "$scratch"' EXIT
 
 if [ "$mode" = network-only ]; then
     # Nothing of the host filesystem, except Claude's own config and
@@ -117,18 +137,14 @@ if [ "$mode" = network-only ]; then
     mounts+=(
         --tmpfs       "$home"
         --overlay-src "$home/.claude"
-        --tmp-overlay "$home/.claude"
+        --overlay     "$upper" "$work" "$home/.claude"
         --bind        "$scratch/claude.json" "$home/.claude.json"
         --tmpfs       /work
     )
+    creds_rel=.credentials.json
     workdir=/work
 else
-    if [ $# -lt 1 ]; then
-        echo "usage: ${0##*/} [-m MODE] <writable-dir> [claude args...]" >&2
-        exit 64
-    fi
-    workdir=$(realpath -e "$1") || exit 64
-    shift
+    workdir=$(realpath -e "$PWD") || exit 64
 
     case "$home/" in
         "$workdir"/*) echo "refusing: $workdir is or contains \$HOME" >&2; exit 64;;
@@ -138,14 +154,15 @@ else
         exit 64
     fi
 
-    # Writes to the home overlay land in tmpfs and are discarded on exit, so
-    # sessions, /model and plugin installs do not persist.
+    # Writes to the home overlay are discarded on exit, so sessions, /model and
+    # plugin installs do not persist.
     mounts+=(
         --overlay-src "$home"
-        --tmp-overlay "$home"
+        --overlay     "$upper" "$work" "$home"
         --ro-bind-try "${CLAUDE_CONFIG_MCP_DIR:-/nonexistent}" "${CLAUDE_CONFIG_MCP_DIR:-/nonexistent}"
         --bind        "$workdir" "$workdir"
     )
+    creds_rel=${creds#"$home"/}
 fi
 
 if [ "$mode" = docker ]; then
