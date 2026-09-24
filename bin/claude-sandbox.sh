@@ -7,7 +7,8 @@ set -eu
 # or that defines its permissions must not be writable from inside the sandbox;
 # these get re-mounted read-only on top of the writable ~/.claude bind below.
 ro_config=()
-for p in settings.json .env policy-limits.json CLAUDE.md statusline-command.sh \
+for p in settings.json settings.ask.json settings.yolo.json .env \
+         policy-limits.json CLAUDE.md statusline-command.sh \
          hooks agents skills plugins; do
     ro_config+=(--ro-bind-try "$HOME/.claude/$p" "$HOME/.claude/$p")
 done

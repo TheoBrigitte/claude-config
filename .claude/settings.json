@@ -231,15 +231,6 @@
       "mcp__incident-io__search_custom_fields"
     ],
     "deny": [],
-    "ask": [
-      "Bash(rm *)",
-      "Bash(* .env*)",
-      "Bash(* *secret*)",
-      "Bash(* *credentials*)",
-      "Read(**/.env*)",
-      "Read(**/*secret*)",
-      "Read(**/*credentials*)"
-    ],
     "defaultMode": "auto"
   },
   "hooks": {

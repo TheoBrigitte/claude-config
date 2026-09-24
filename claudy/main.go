@@ -46,7 +46,8 @@ Claudy flags:
       --preset-list           List available presets
       --sandbox               Run claude inside a sandbox
       --no-sandbox            Do not run claude inside a sandbox
-      --yolo                  (danger) bypass permissions and load settings.yolo.json
+      --yolo                  (danger) bypass permissions and load
+                              settings.yolo.json instead of settings.ask.json
 
 All other flags are passed through to claude.`,
 	Example: `  claudy --mcp-servers list
@@ -201,10 +202,9 @@ func listPresets() {
 	}
 }
 
-// yoloSettingsPath returns the path to the yolo settings overlay loaded in
-// --yolo mode, or "" if it does not exist. It lives alongside the user's
-// settings.json in the claude config dir (CLAUDE_CONFIG_DIR, default ~/.claude).
-func yoloSettingsPath() string {
+// settingsPath returns the path to the settings overlay name in the claude
+// config dir (CLAUDE_CONFIG_DIR, default ~/.claude), or "" if it does not exist.
+func settingsPath(name string) string {
 	dir := os.Getenv("CLAUDE_CONFIG_DIR")
 	if dir == "" {
 		home, err := os.UserHomeDir()
@@ -213,7 +213,7 @@ func yoloSettingsPath() string {
 		}
 		dir = filepath.Join(home, ".claude")
 	}
-	path := filepath.Join(dir, "settings.yolo.json")
+	path := filepath.Join(dir, name)
 	if _, err := os.Stat(path); err != nil {
 		return ""
 	}
@@ -294,14 +294,16 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 	}
 	// claudeArgs = append(claudeArgs, userArgs...)
 
+	settingsName := "settings.ask.json"
 	if p.yolo {
+		settingsName = "settings.yolo.json"
 		claudeArgs = append(claudeArgs, "--allow-dangerously-skip-permissions")
 		claudeArgs = append(claudeArgs, "--dangerously-skip-permissions")
-		if s := yoloSettingsPath(); s != "" {
-			claudeArgs = append(claudeArgs, "--settings", s)
-		} else {
-			log.Warn().Msg("yolo settings file not found, skipping --settings overlay")
-		}
+	}
+	if s := settingsPath(settingsName); s != "" {
+		claudeArgs = append(claudeArgs, "--settings", s)
+	} else {
+		log.Warn().Msgf("%s not found, skipping --settings overlay", settingsName)
 	}
 
 	// Final command

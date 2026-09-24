@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "ask": [
+      "Bash(rm *)",
+      "Bash(* .env*)",
+      "Bash(* *secret*)",
+      "Bash(* *credentials*)",
+      "Read(**/.env*)",
+      "Read(**/*secret*)",
+      "Read(**/*credentials*)"
+    ]
+  }
+}
