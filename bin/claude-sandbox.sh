@@ -70,6 +70,19 @@ keep_env=(
     KUBECONFIG
     GH_TOKEN
     GPG_TTY
+    SSH_AUTH_SOCK
+    # MCP server configs in $CLAUDE_CONFIG_MCP_DIR expand these.
+    CONTEXT7_API_KEY
+    GITHUB_TOKEN
+    GRAFANA_ORG_ID
+    GRAFANA_PASSWORD
+    GRAFANA_SERVICE_ACCOUNT_TOKEN
+    GRAFANA_URL
+    GRAFANA_USERNAME
+    INCIDENT_IO_API_KEY
+    JINA_API_KEY
+    N8N_API_KEY
+    PAGERDUTY_USER_API_KEY
 )
 
 # gh keeps its token in the login keyring, which the jail cannot reach: it has
@@ -100,6 +113,9 @@ common=(
     # git signs commits, so gpg needs the socket of the agent already running
     # on the host, the one holding the unlocked key.
     --ro-bind-try "/run/user/$uid/gnupg"  "/run/user/$uid/gnupg"
+    # The user namespace maps root to nobody, and ssh refuses a config file
+    # not owned by root or the user. The drop-ins go, so git over ssh works.
+    --tmpfs       /etc/ssh/ssh_config.d
     --setenv      CLAUDE_JAIL           "$mode"
     --die-with-parent
 )
@@ -177,6 +193,12 @@ else
         --bind        "$writable" "$writable"
     )
     [ -n "$gitdir" ] && mounts+=(--bind "$gitdir" "$gitdir")
+    # A socket seen through the overlay refuses connections: the agent's
+    # directory is bound on top, so git over ssh can use the host keys.
+    if [ -S "${SSH_AUTH_SOCK:-}" ]; then
+        agent_dir=$(dirname "$SSH_AUTH_SOCK")
+        mounts+=(--ro-bind "$agent_dir" "$agent_dir")
+    fi
     cdest="$cdir"
 fi
 
