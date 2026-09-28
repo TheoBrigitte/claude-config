@@ -3,7 +3,8 @@
 #
 # Usage: claude-jail.sh [-m MODE] [claude args...]
 #
-# The current directory is the one writable path.
+# The current directory is the one writable path. Inside a git repository, the
+# whole working tree and its git dir are.
 #
 #   standard      (default) the whole home directory is visible through a
 #                 throwaway overlay, so every tool config (kube, aws, gh,
@@ -149,23 +150,33 @@ if [ "$mode" = network-only ]; then
 else
     workdir=$(realpath -e "$PWD") || exit 64
 
+    # Inside a git repository, the whole working tree is writable, and so is
+    # the git dir, which a worktree or a submodule keeps outside it.
+    writable=$workdir
+    gitdir=
+    if toplevel=$(git -C "$workdir" rev-parse --show-toplevel 2>/dev/null); then
+        writable=$toplevel
+        gitdir=$(git -C "$workdir" rev-parse --path-format=absolute --git-common-dir)
+    fi
+
     case "$home/" in
-        "$workdir"/*) echo "refusing: $workdir is or contains \$HOME" >&2; exit 64;;
+        "$writable"/*) echo "refusing: $writable is or contains \$HOME" >&2; exit 64;;
     esac
-    if [ "$workdir" = "/" ]; then
+    if [ "$writable" = "/" ]; then
         echo "refusing to make / writable" >&2
         exit 64
     fi
 
     # Writes to the home overlay are discarded on exit, so everything outside
-    # ~/.claude and the current directory does not persist.
+    # ~/.claude and the working tree does not persist.
     mounts+=(
         --overlay-src "$home"
         --tmp-overlay "$home"
         --ro-bind-try "${CLAUDE_CONFIG_MCP_DIR:-/nonexistent}" "${CLAUDE_CONFIG_MCP_DIR:-/nonexistent}"
         --bind        "$cdir" "$cdir"
-        --bind        "$workdir" "$workdir"
+        --bind        "$writable" "$writable"
     )
+    [ -n "$gitdir" ] && mounts+=(--bind "$gitdir" "$gitdir")
     cdest="$cdir"
 fi
 
