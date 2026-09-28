@@ -15,11 +15,9 @@
 #                 ~/.claude comes in, read-write, so Claude can start,
 #                 authenticate and keep its history. Network on. The current
 #                 directory is not mounted.
-#   docker        standard plus a nested rootless podman, with its storage in
-#                 tmpfs and its cgroups in your own delegated cgroup subtree.
-#                 `docker` runs podman. Containers cannot touch the host.
-#                 Weaker than standard: cgroup and network namespaces are
-#                 shared with the host, podman needs both.
+#   docker        standard plus the host docker socket and a rootless podman
+#                 service socket. Weaker than standard: the daemons run
+#                 containers on the host.
 
 set -eu
 
@@ -207,43 +205,17 @@ for p in hooks settings.json plugins; do
 done
 
 if [ "$mode" = docker ]; then
-    # Podman runs with a single uid mapping: empty subuid/subgid files keep it
-    # from asking for ranges it cannot get inside the jail, and vfs with
-    # ignore_chown_errors keeps image layers unpacking under that one uid.
-    # Storage lives in tmpfs, so images are pulled again every session.
-    : > "$scratch/subid"
-    cat > "$scratch/storage.conf" <<EOF
-[storage]
-driver = "vfs"
-runroot = "/tmp/podman/run"
-graphroot = "/tmp/podman/store"
-[storage.options.vfs]
-ignore_chown_errors = "true"
-EOF
-    cat > "$scratch/containers.conf" <<EOF
-[engine]
-cgroup_manager = "cgroupfs"
-events_logger = "file"
-EOF
-    printf '#!/bin/sh\nexec podman "$@"\n' > "$scratch/docker"
-    chmod +x "$scratch/docker"
-
-    # Podman needs to write cgroups and to see the pids it puts in them, so the
-    # cgroup namespace stays shared and the host cgroup subtree systemd
-    # delegates to this user is bound as the cgroup root.
-    cgroup="/sys/fs/cgroup/user.slice/user-$uid.slice/user@$uid.service"
-    unshare=(--unshare-user --unshare-ipc --unshare-pid --unshare-uts)
+    # The host docker daemon and the rootless podman service, through their
+    # sockets. Either one gives full control over what it runs.
+    # The podman service runs on the host for the jail's lifetime.
+    podman system service --time=0 "unix://$scratch/podman.sock" >/dev/null 2>&1 &
+    svc=$!
+    trap 'kill "$svc" 2>/dev/null; rm -rf "$scratch"' EXIT
+    until [ -S "$scratch/podman.sock" ]; do sleep 0.1; done
     mounts+=(
-        --ro-bind   /sys                 /sys
-        --bind      "$cgroup"            /sys/fs/cgroup
-        --dev-bind  /dev/net/tun         /dev/net/tun
-        --tmpfs     /var/tmp
-        --ro-bind   "$scratch/subid"     /etc/subuid
-        --ro-bind   "$scratch/subid"     /etc/subgid
-        --ro-bind   "$scratch"           "$scratch"
-        --setenv    CONTAINERS_STORAGE_CONF "$scratch/storage.conf"
-        --setenv    CONTAINERS_CONF         "$scratch/containers.conf"
-        --setenv    PATH                    "$scratch:$PATH"
+        --bind-try /run/docker.sock /run/docker.sock
+        --bind     "$scratch/podman.sock" "/run/user/$uid/podman/podman.sock"
+        --setenv   CONTAINER_HOST "unix:///run/user/$uid/podman/podman.sock"
     )
 fi
 
