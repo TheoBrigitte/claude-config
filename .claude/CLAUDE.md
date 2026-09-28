@@ -82,6 +82,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Rewriting published history is the user's call, not yours.
 - If a push is rejected, stop and report it. Don't force it through.
 
-## Github draft pull requests
+## Github pull requests
 
-**Always create Github pull requests as drafts.**
+- Always create Github pull requests as drafts.
+- Always assign me (TheoBrigitte) as the pull request author.
+
