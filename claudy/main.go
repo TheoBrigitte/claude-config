@@ -42,9 +42,13 @@ Claudy flags:
       --mcp-servers list      List available MCP servers
       --mcp-servers strings   MCP servers to launch (comma-separated or repeated)
       --grafana-org string    Grafana organization name
-      --preset string         Use a predefined preset (e.g. sre)
+  -p, --preset string         Use a predefined preset (e.g. sre)
       --preset-list           List available presets
-      --sandbox               Run claude inside a sandbox
+      --sandbox[=MODE]        (default) Run claude inside a sandbox, where the
+                              current directory is the only writable path.
+                              MODE is standard (default), network-only or
+                              docker
+  -m MODE                     Same as --sandbox=MODE
       --no-sandbox            Do not run claude inside a sandbox
       --yolo                  (danger) bypass permissions and load
                               settings.yolo.json instead of settings.ask.json
@@ -54,7 +58,8 @@ All other flags are passed through to claude.`,
   claudy --preset sre
   claudy --mcp-servers github,pagerduty
   claudy --mcp-servers github --mcp-servers pagerduty
-  claudy --mcp-servers github --print --output-format json 'Hi'`,
+  claudy --mcp-servers github --print --output-format json 'Hi'
+  claudy --sandbox=docker --mcp-servers github`,
 	SilenceUsage:       true,
 	SilenceErrors:      true,
 	DisableFlagParsing: true,
@@ -62,21 +67,24 @@ All other flags are passed through to claude.`,
 }
 
 type parsedArgs struct {
-	help       bool
-	sandbox    bool
-	mcpList    bool
-	presetList bool
-	presetName string
-	mcpServers []string
-	userArgs   []string
-	yolo       bool
+	help        bool
+	sandbox     bool
+	sandboxMode string
+	mcpList     bool
+	presetList  bool
+	presetName  string
+	mcpServers  []string
+	userArgs    []string
+	yolo        bool
 }
 
 // parseArgs extracts claudy-specific flags from args and returns the remaining
 // args to pass through to claude.
 func parseArgs(args []string) parsedArgs {
 	var p parsedArgs
-	p.sandbox = true // default to sandbox enabled
+	// Default to the sandbox, in standard mode.
+	p.sandbox = true
+	p.sandboxMode = "standard"
 
 	for i := 0; i < len(args); i++ {
 		switch {
@@ -84,6 +92,13 @@ func parseArgs(args []string) parsedArgs {
 			p.help = true
 		case args[i] == "--sandbox":
 			p.sandbox = true
+		case strings.HasPrefix(args[i], "--sandbox="):
+			p.sandbox = true
+			p.sandboxMode = strings.TrimPrefix(args[i], "--sandbox=")
+		case args[i] == "-m" && i+1 < len(args):
+			i++
+			p.sandbox = true
+			p.sandboxMode = args[i]
 		case args[i] == "--no-sandbox":
 			p.sandbox = false
 		case args[i] == "--yolo":
@@ -321,7 +336,7 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 			return fmt.Errorf("sandbox command %q not found in PATH: %w", sandboxCmd, err)
 		}
 		command = sandboxPath
-		args = []string{sandboxPath}
+		args = []string{sandboxPath, "-m", p.sandboxMode}
 	}
 	args = append(args, claudeArgs...)
 	args = append(args, userArgs...)
