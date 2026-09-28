@@ -47,6 +47,7 @@ bwrap \
     --bind      "$HOME/.gnupg"            "$HOME/.gnupg"            \
     --ro-bind   "$HOME/.gitconfig"        "$HOME/.gitconfig"        \
     --ro-bind   "$HOME/.local"            "$HOME/.local"            \
+    --ro-bind   "$HOME/bin"               "$HOME/bin"               \
     "${rw_state[@]}"                                                \
     --overlay-src "$HOME/pkg"                                       \
     --tmp-overlay "$HOME/pkg"                                       \
