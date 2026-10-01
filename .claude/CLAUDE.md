@@ -92,6 +92,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Github links
 
-- Always print full Github URLs: `https://github.com/giantswarm/repo/pull/123`.
+- Always print full Github URLs: https://github.com/giantswarm/repo/pull/123
 - Never print short forms: `#123`, `repo#123`, `giantswarm/repo#123`.
+- Surround each URL with whitespace or a line boundary only.
+- Never wrap a URL in backticks, quotes, parentheses, brackets, or markdown link syntax.
+- Never put punctuation directly after a URL.
 - Apply this to pull requests, issues, commits, and files.
