@@ -90,3 +90,8 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - If a check fails, read its logs, fix the issue, push a new commit, and monitor again.
 - If a failure is unrelated to the change (flaky test, infra outage), report it. Don't fix it.
 
+## Github links
+
+- Always print full Github URLs: `https://github.com/giantswarm/repo/pull/123`.
+- Never print short forms: `#123`, `repo#123`, `giantswarm/repo#123`.
+- Apply this to pull requests, issues, commits, and files.
