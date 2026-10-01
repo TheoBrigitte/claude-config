@@ -86,9 +86,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - Always create Github pull requests as drafts.
 - Always assign me (TheoBrigitte) as the pull request author.
-- After each push to a pull request, monitor its CI checks until they finish.
-- If a check fails, read its logs, fix the issue, push a new commit, and monitor again.
-- If a failure is unrelated to the change (flaky test, infra outage), report it. Don't fix it.
 
 ## Github links
 
