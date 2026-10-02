@@ -67,6 +67,8 @@ keep_env=(
     CLAUDE_CONFIG_ICON_PATH
     KUBECONFIG
     GH_TOKEN
+    # The circleci CLI reads its token from here, in every mode.
+    CIRCLE_TOKEN
     GPG_TTY
     SSH_AUTH_SOCK
     # MCP server configs in $CLAUDE_CONFIG_MCP_DIR expand these.
