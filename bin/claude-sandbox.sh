@@ -149,10 +149,22 @@ trap 'rm -rf "$scratch"' EXIT
 # therefore do not persist.
 cdir=$(realpath -e "$home/.claude")
 
+# Claude asks whether to trust the working directory and records the answer in
+# ~/.claude.json, which the jail never writes back: the answer would be asked
+# again every session. The directory is trusted up front, on the host.
+trust() {
+    jq -e --arg d "$2" '.projects[$d].hasTrustDialogAccepted == true' "$1" >/dev/null && return
+    local f
+    f=$(realpath -e "$1")
+    jq --arg d "$2" '.projects[$d].hasTrustDialogAccepted = true' "$f" > "$f.trust.$$"
+    mv "$f.trust.$$" "$f"
+}
+
 if [ "$mode" = network-only ]; then
     # Nothing of the host filesystem, except Claude's own config and
     # credentials, without which it cannot start.
     cp "$home/.claude.json" "$scratch/claude.json"
+    trust "$scratch/claude.json" /work
     mounts+=(
         --tmpfs       "$home"
         --bind        "$cdir" "$home/.claude"
@@ -198,6 +210,7 @@ else
         mounts+=(--ro-bind "$agent_dir" "$agent_dir")
     fi
     cdest="$cdir"
+    trust "$home/.claude.json" "$workdir"
 fi
 
 for p in hooks settings.json plugins; do
