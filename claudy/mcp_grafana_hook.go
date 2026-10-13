@@ -24,6 +24,7 @@ const (
 	grafanaService     = "svc/grafana"
 	grafanaServicePort = "3000"
 	serviceAccountName = "claude"
+	serviceAccountRole = "Admin"
 	grafanaSecretName  = "grafana"
 )
 
@@ -143,6 +144,9 @@ func runMcpGrafanaHook(cmd *cobra.Command, args []string) error {
 		log.Debug().Int("id", saID).Msg("created service account")
 	} else {
 		log.Debug().Int("id", saID).Msg("found existing service account")
+		if err := updateServiceAccountRole(adminUser, adminPass, saID, orgID, grafanaURL); err != nil {
+			return fmt.Errorf("failed to update service account role: %w", err)
+		}
 	}
 
 	tokenName := "claude-" + strconv.FormatInt(time.Now().Unix(), 10)
@@ -305,7 +309,7 @@ func findServiceAccount(adminUser, adminPass, name, orgID, baseURL string) (int,
 func createServiceAccount(adminUser, adminPass, name, orgID, baseURL string) (int, error) {
 	resp, err := grafanaRequest("POST", "/api/serviceaccounts", adminUser, adminPass, orgID, baseURL, map[string]interface{}{
 		"name": name,
-		"role": "Editor",
+		"role": serviceAccountRole,
 	})
 	if err != nil {
 		return 0, err
@@ -324,6 +328,23 @@ func createServiceAccount(adminUser, adminPass, name, orgID, baseURL string) (in
 		return 0, err
 	}
 	return result.ID, nil
+}
+
+func updateServiceAccountRole(adminUser, adminPass string, saID int, orgID, baseURL string) error {
+	resp, err := grafanaRequest("PATCH", fmt.Sprintf("/api/serviceaccounts/%d", saID), adminUser, adminPass, orgID, baseURL, map[string]interface{}{
+		"name": serviceAccountName,
+		"role": serviceAccountRole,
+	})
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("update service account role: %s: %s", resp.Status, body)
+	}
+	return nil
 }
 
 func createServiceAccountToken(adminUser, adminPass string, saID int, tokenName, orgID, baseURL string) (string, error) {
