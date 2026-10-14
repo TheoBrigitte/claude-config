@@ -34,6 +34,9 @@ esac
 home=$(realpath -e "$HOME")
 uid=$(id -u)
 
+# The CLAUDE_ prefixed tokens below.
+. "$home/.config/shell/claude_secrets.sh"
+
 # Secrets that no tool needs to do its job: directories become tmpfs, files
 # become /dev/null. ~/.ssh and ~/.gnupg stay, git needs them.
 masked_dirs=(
