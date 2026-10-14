@@ -66,31 +66,28 @@ keep_env=(
     CLAUDE_CONFIG_MCP_DIR
     CLAUDE_CONFIG_ICON_PATH
     KUBECONFIG
-    GH_TOKEN
-    # The circleci CLI reads its token from here, in every mode.
-    CIRCLE_TOKEN
     GPG_TTY
     SSH_AUTH_SOCK
     # MCP server configs in $CLAUDE_CONFIG_MCP_DIR expand these.
     CONTEXT7_API_KEY
-    GITHUB_TOKEN
     GRAFANA_ORG_ID
     GRAFANA_PASSWORD
     GRAFANA_SERVICE_ACCOUNT_TOKEN
     GRAFANA_URL
     GRAFANA_USERNAME
-    INCIDENT_IO_API_KEY
     JINA_API_KEY
     N8N_API_KEY
-    PAGERDUTY_USER_API_KEY
 )
 
-# gh keeps its token in the login keyring, which the jail cannot reach: it has
-# no session bus. Resolve the token on the host and pass it in, so the keyring
-# itself stays outside.
-if [ -z "${GH_TOKEN:-}" ]; then
-    GH_TOKEN=$(gh auth token 2>/dev/null) || true
-fi
+# Passed in with the CLAUDE_ prefix stripped: GITHUB_TOKEN, SLACK_TOKEN, ...
+prefixed_env=(
+    CLAUDE_GITHUB_TOKEN
+    CLAUDE_INCIDENT_IO_API_KEY
+    CLAUDE_PAGERDUTY_USER_API_KEY
+    # The circleci CLI reads its token from here, in every mode.
+    CLAUDE_CIRCLE_TOKEN
+    CLAUDE_SLACK_TOKEN
+)
 
 # Mounts every mode shares.
 common=(
@@ -134,6 +131,9 @@ fi
 env_args=()
 for v in "${keep_env[@]}"; do
     [ -n "${!v:-}" ] && env_args+=(--setenv "$v" "${!v}")
+done
+for v in "${prefixed_env[@]}"; do
+    [ -n "${!v:-}" ] && env_args+=(--setenv "${v#CLAUDE_}" "${!v}")
 done
 
 mounts=()

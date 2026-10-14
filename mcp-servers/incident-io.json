@@ -3,7 +3,10 @@
     "incident.io": {
       "description": "Manage incident.io incidents, actions, follow-ups, and post-mortems.",
       "type": "http",
-      "url": "https://mcp.incident.io/mcp"
+      "url": "https://mcp.incident.io/mcp",
+      "headers": {
+        "Authorization": "Bearer ${INCIDENT_IO_API_KEY}"
+      }
     }
   }
 }
