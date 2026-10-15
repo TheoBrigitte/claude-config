@@ -50,7 +50,8 @@ Claudy flags:
                               docker
   -m MODE                     Same as --sandbox=MODE
       --no-sandbox            Do not run claude inside a sandbox
-      --speak                 Read each reply aloud (speak.sh Stop hook)
+      --speak                 Enable voice mode (tap) and read each reply
+                              aloud (speak.sh Stop hook)
       --yolo                  (danger) bypass permissions and load
                               settings.yolo.json instead of settings.ask.json
 
@@ -319,14 +320,34 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 		claudeArgs = append(claudeArgs, "--allow-dangerously-skip-permissions")
 		claudeArgs = append(claudeArgs, "--dangerously-skip-permissions")
 	}
-	if s := settingsPath(settingsName); s != "" {
-		claudeArgs = append(claudeArgs, "--settings", s)
-	} else {
+	settings := settingsPath(settingsName)
+	if settings == "" {
 		log.Warn().Msgf("%s not found, skipping --settings overlay", settingsName)
 	}
 
 	if p.speak {
 		os.Setenv("CLAUDE_SPEAK", "1")
+		// claude takes a single --settings: the overlay and the voice
+		// settings go in as one JSON string.
+		overlay := map[string]any{}
+		if settings != "" {
+			data, err := os.ReadFile(settings)
+			if err != nil {
+				return err
+			}
+			if err := json.Unmarshal(data, &overlay); err != nil {
+				return fmt.Errorf("failed to parse %s: %w", settings, err)
+			}
+		}
+		overlay["voice"] = map[string]any{"enabled": true, "mode": "tap"}
+		data, err := json.Marshal(overlay)
+		if err != nil {
+			return err
+		}
+		settings = string(data)
+	}
+	if settings != "" {
+		claudeArgs = append(claudeArgs, "--settings", settings)
 	}
 
 	// Final command
