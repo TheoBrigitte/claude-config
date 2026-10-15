@@ -322,14 +322,10 @@
   },
   "effortLevel": "high",
   "tui": "default",
-  "voice": {
-    "enabled": true,
-    "mode": "tap"
-  },
   "theme": "dark",
   "autoCompactEnabled": false,
   "agentPushNotifEnabled": true,
-  "voiceEnabled": true,
+  "voiceEnabled": false,
   "lspServers": {
     "go": {
       "command": "gopls",
