@@ -68,6 +68,8 @@ keep_env=(
     ANTHROPIC_API_KEY
     CLAUDE_CONFIG_MCP_DIR
     CLAUDE_CONFIG_ICON_PATH
+    # The speak.sh Stop hook reads this.
+    CLAUDE_SPEAK
     KUBECONFIG
     GPG_TTY
     SSH_AUTH_SOCK

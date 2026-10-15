@@ -50,6 +50,7 @@ Claudy flags:
                               docker
   -m MODE                     Same as --sandbox=MODE
       --no-sandbox            Do not run claude inside a sandbox
+      --speak                 Read each reply aloud (speak.sh Stop hook)
       --yolo                  (danger) bypass permissions and load
                               settings.yolo.json instead of settings.ask.json
 
@@ -76,6 +77,7 @@ type parsedArgs struct {
 	mcpServers  []string
 	userArgs    []string
 	yolo        bool
+	speak       bool
 }
 
 // parseArgs extracts claudy-specific flags from args and returns the remaining
@@ -103,6 +105,8 @@ func parseArgs(args []string) parsedArgs {
 			p.sandbox = false
 		case args[i] == "--yolo":
 			p.yolo = true
+		case args[i] == "--speak":
+			p.speak = true
 		case args[i] == "--preset-list":
 			p.presetList = true
 		case args[i] == "--grafana-org" && i+1 < len(args):
@@ -319,6 +323,10 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 		claudeArgs = append(claudeArgs, "--settings", s)
 	} else {
 		log.Warn().Msgf("%s not found, skipping --settings overlay", settingsName)
+	}
+
+	if p.speak {
+		os.Setenv("CLAUDE_SPEAK", "1")
 	}
 
 	// Final command
