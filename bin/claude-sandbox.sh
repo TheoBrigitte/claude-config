@@ -224,6 +224,18 @@ for p in hooks settings.json plugins; do
     [ -e "$cdir/$p" ] && mounts+=(--ro-bind "$cdir/$p" "$cdest/$p")
 done
 
+if [ "${CLAUDE_SPEAK:-}" = 1 ]; then
+    # Voice mode records through pipewire, the speak.sh Stop hook talks to
+    # speech-dispatcher. Both sockets live in the host runtime dir.
+    rundir=/run/user/$uid
+    mounts+=(
+        --setenv   XDG_RUNTIME_DIR "$rundir"
+        --bind-try "$rundir/speech-dispatcher" "$rundir/speech-dispatcher"
+        --bind-try "$rundir/pipewire-0" "$rundir/pipewire-0"
+        --bind-try "$rundir/pulse" "$rundir/pulse"
+    )
+fi
+
 if [ "$mode" = docker ]; then
     # The host docker daemon and the rootless podman service, through their
     # sockets. Either one gives full control over what it runs.
