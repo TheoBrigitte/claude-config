@@ -105,25 +105,6 @@
       "mcp__grafana__find_error_pattern_logs",
       "mcp__grafana__find_slow_requests",
       "mcp__grafana__generate_deeplink",
-      "mcp__jina__capture_screenshot_url",
-      "mcp__jina__deduplicate_images",
-      "mcp__jina__deduplicate_strings",
-      "mcp__jina__expand_query",
-      "mcp__jina__extract_pdf",
-      "mcp__jina__guess_datetime_url",
-      "mcp__jina__parallel_read_url",
-      "mcp__jina__parallel_search_arxiv",
-      "mcp__jina__parallel_search_ssrn",
-      "mcp__jina__parallel_search_web",
-      "mcp__jina__primer",
-      "mcp__jina__read_url",
-      "mcp__jina__search_arxiv",
-      "mcp__jina__search_bibtex",
-      "mcp__jina__search_images",
-      "mcp__jina__search_jina_blog",
-      "mcp__jina__search_ssrn",
-      "mcp__jina__search_web",
-      "mcp__jina__sort_by_relevance",
       "mcp__kubernetes__describe_cronjob",
       "mcp__kubernetes__describe_deployment",
       "mcp__kubernetes__describe_node",
@@ -288,7 +269,7 @@
   },
   "enabledPlugins": {
     "gopls-lsp@claude-plugins-official": true,
-    "gs-godev@giantswarm": true,
+    "gs-godev@giantswarm": false,
     "gs-product@giantswarm": true,
     "gs-sre@giantswarm": true,
     "mattpocock-skills@mattpocock": true,
@@ -336,5 +317,11 @@
         ".go": "go"
       }
     }
+  },
+  "skillOverrides": {
+    "generate-llms-txt": "off",
+    "giantswarm-platform": "off",
+    "golang-pro": "off",
+    "jq": "off"
   }
 }

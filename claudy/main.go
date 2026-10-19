@@ -29,7 +29,7 @@ type preset struct {
 
 var presets = map[string]preset{
 	"sre": {
-		MCPServers: []string{"jina", "github", "pagerduty", "incident-io", "kubernetes", "grafana", "slack", "sequential-thinking"},
+		MCPServers: []string{"github", "pagerduty", "incident-io", "kubernetes", "grafana", "slack"},
 	},
 }
 
