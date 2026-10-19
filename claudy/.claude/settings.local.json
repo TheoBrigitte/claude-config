@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(file:*)",
+      "WebSearch",
+      "Bash(/home/theo/projects/ai/claudy/claudy:*)",
+      "Bash(./claudy:*)",
+      "WebFetch(domain:grafana.com)",
+      "Bash(CLAUDE_ENV_FILE=/tmp/test-grafana-env /home/theo/projects/ai/claudy/claudy mcp-grafana-hook:*)",
+      "mcp__grafana__search_dashboards",
+      "mcp__grafana__list_datasources",
+      "mcp__grafana__get_dashboard_by_uid",
+      "mcp__grafana__query_prometheus",
+      "mcp__grafana__list_prometheus_label_names",
+      "mcp__grafana__list_prometheus_label_values",
+      "mcp__grafana__update_dashboard",
+      "mcp__grafana__get_dashboard_panel_queries",
+      "Bash(claude:*)",
+      "mcp__code-index__set_project_path",
+      "mcp__code-index__build_deep_index",
+      "mcp__code-index__search_code_advanced",
+      "mcp__code-index__get_symbol_body"
+    ]
+  }
+}
