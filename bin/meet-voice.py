@@ -32,17 +32,21 @@ SILENCE_FRAMES = 17  # 500 ms of silence ends an utterance
 MIN_FRAMES = 10  # 300 ms of speech starts an utterance and interrupts Claude
 LEAD = 0.15  # seconds of audio queued ahead of playback
 THRESHOLD = int(os.environ.get("MEET_THRESHOLD", "400"))  # int16 RMS
-MODEL = os.environ.get("MEET_MODEL", "haiku")
+MODEL = os.environ.get("MEET_MODEL", "claude-sonnet-5-5")
 VOICE = os.environ.get(
     "MEET_VOICE", "/usr/share/piper-voices/en/en_US/hfc_female/medium/en_US-hfc_female-medium.onnx"
 )
 SYSTEM = (
-    "You are Claude, talking with Theo in a Google Meet call. "
+    "You are Claude, talking with someone in a Google Meet call. "
     "Your words are spoken aloud by a text-to-speech voice. "
-    "Answer in one to three short spoken sentences. "
+    "Talk like a curious friend, not an assistant. "
+    "Share your own views and push back when you disagree. "
+    "Bring in ideas, examples or stories they might not expect. "
+    "Ask a question back now and then. "
+    "Keep each turn short enough to say in under thirty seconds. "
     "No markdown, no lists, no code, no URLs. "
     "Input comes from speech recognition and may contain errors. "
-    "Theo can interrupt you while you speak."
+    "They can interrupt you while you speak."
 )
 
 
