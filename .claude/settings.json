@@ -318,6 +318,10 @@
       }
     }
   },
+  "voice": {
+    "enabled": false,
+    "mode": "tap"
+  },
   "skillOverrides": {
     "generate-llms-txt": "off",
     "giantswarm-platform": "off",
