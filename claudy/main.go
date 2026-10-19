@@ -327,19 +327,25 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 
 	if p.speak {
 		os.Setenv("CLAUDE_SPEAK", "1")
-		// claude takes a single --settings: the overlay and the voice
-		// settings go in as one JSON string.
+		// claude takes a single --settings: the overlay and the
+		// settings.speak.json keys go in as one JSON string.
 		overlay := map[string]any{}
-		if settings != "" {
-			data, err := os.ReadFile(settings)
+		speakSettings := settingsPath("settings.speak.json")
+		if speakSettings == "" {
+			log.Warn().Msg("settings.speak.json not found, skipping speak settings")
+		}
+		for _, path := range []string{settings, speakSettings} {
+			if path == "" {
+				continue
+			}
+			data, err := os.ReadFile(path)
 			if err != nil {
 				return err
 			}
 			if err := json.Unmarshal(data, &overlay); err != nil {
-				return fmt.Errorf("failed to parse %s: %w", settings, err)
+				return fmt.Errorf("failed to parse %s: %w", path, err)
 			}
 		}
-		overlay["voice"] = map[string]any{"enabled": true, "mode": "tap"}
 		data, err := json.Marshal(overlay)
 		if err != nil {
 			return err
