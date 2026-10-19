@@ -83,8 +83,9 @@ case "$TOOL_NAME" in
     MESSAGE="$TOOL_NAME";;
 esac
 
-# Send the notification, with allow and deny actions
-RESPONSE="$(notify-send -i "$CLAUDE_CONFIG_ICON_PATH" --wait --expire-time 5000 --action=ALLOW=Allow --action=DENY=Deny "${SUMMARY} - Permissions request" "${MESSAGE}")"
+# Send the notification, with allow and deny actions.
+# Expire after 600s, the default PermissionRequest hook timeout in Claude Code.
+RESPONSE="$(notify-send -i "$CLAUDE_CONFIG_ICON_PATH" --wait --expire-time 600000 --action=ALLOW=Allow --action=DENY=Deny "${SUMMARY} - Permissions request" "${MESSAGE}")"
 
 # Handle responses action response
 case "$RESPONSE" in
