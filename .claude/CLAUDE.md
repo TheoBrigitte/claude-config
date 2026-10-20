@@ -75,6 +75,17 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
+## Use Sub Agents
+
+**Delegate work that would flood the main context.**
+
+- Use a sub agent for broad searches across many files or sources.
+- Use a sub agent for web research and long document reads.
+- Run independent tasks as parallel sub agents in one message.
+- Pick the most specific agent type that fits the task.
+- Do the work directly for a single file read or a known lookup.
+- Relay the sub agent's findings to me. I never see its report.
+
 ## Never Force Push
 
 **No `git push --force` or `--force-with-lease`. Ever.**
