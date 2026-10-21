@@ -98,6 +98,12 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Always create Github pull requests as drafts.
 - Always assign me (TheoBrigitte) as the pull request author.
 
+## Commit After Each Change
+
+- Commit after each change. One commit per logical change.
+- Stage only the files you changed, by path.
+- Never run `git add -A` or `git add .`.
+
 ## Github links
 
 - Always print full Github URLs: https://github.com/giantswarm/repo/pull/123
