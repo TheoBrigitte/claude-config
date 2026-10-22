@@ -104,6 +104,10 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Stage only the files you changed, by path.
 - Never run `git add -A` or `git add .`.
 
+## Claude Annotations
+
+- Keep the default Claude Code attribution in commit messages and pull request descriptions.
+
 ## Github links
 
 - Always print full Github URLs: https://github.com/giantswarm/repo/pull/123
