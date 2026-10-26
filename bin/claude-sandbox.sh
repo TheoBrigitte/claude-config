@@ -3,9 +3,12 @@
 #
 # Usage: claude-sandbox.sh [-m MODE] [-w DIR]... [--] [claude args...]
 #
-# The current directory is writable. Inside a git repository, the whole working
-# tree and its git dir are. Each -w DIR is writable too, and claude gets it with
-# --add-dir. network-only mode rejects -w.
+# Without -w, the current directory is writable. Inside a git repository, the
+# whole working tree and its git dir are.
+#
+# With -w, the working directory is an empty tmpfs at /work, and each DIR is
+# bound read-write in it under its basename: -w ~/src/foo is /work/foo. The
+# current directory is not mounted. network-only mode rejects -w.
 #
 #   standard      (default) the whole home directory is visible through a
 #                 throwaway overlay, so every tool config (kube, aws, gh,
@@ -154,7 +157,6 @@ for v in "${prefixed_env[@]}"; do
 done
 
 mounts=()
-add_dirs=()
 unshare=(--unshare-all --share-net)
 workdir=
 scratch=$(mktemp -d)
@@ -194,17 +196,6 @@ if [ "$mode" = network-only ]; then
     cdest="$home/.claude"
     workdir=/work
 else
-    workdir=$(realpath -e "$PWD") || exit 64
-
-    # Inside a git repository, the whole working tree is writable, and so is
-    # the git dir, which a worktree or a submodule keeps outside it.
-    writable=$workdir
-    gitdir=
-    if toplevel=$(git -C "$workdir" rev-parse --show-toplevel 2>/dev/null); then
-        writable=$toplevel
-        gitdir=$(git -C "$workdir" rev-parse --path-format=absolute --git-common-dir)
-    fi
-
     refuse() {
         case "$home/" in
             "$1"/*) echo "refusing: $1 is or contains \$HOME" >&2; exit 64;;
@@ -214,24 +205,52 @@ else
             exit 64
         fi
     }
-    refuse "$writable"
 
     # Writes to the home overlay are discarded on exit, so everything outside
-    # ~/.claude and the working tree does not persist.
+    # ~/.claude and the writable directories does not persist.
     mounts+=(
         --overlay-src "$home"
         --tmp-overlay "$home"
         --ro-bind-try "${CLAUDE_CONFIG_MCP_DIR:-/nonexistent}" "${CLAUDE_CONFIG_MCP_DIR:-/nonexistent}"
         --bind        "$cdir" "$cdir"
-        --bind        "$writable" "$writable"
     )
-    [ -n "$gitdir" ] && mounts+=(--bind "$gitdir" "$gitdir")
-    for d in "${write_dirs[@]}"; do
-        d=$(realpath -e "$d") || exit 64
-        refuse "$d"
-        mounts+=(--bind "$d" "$d")
-        add_dirs+=(--add-dir "$d")
-    done
+
+    if [ ${#write_dirs[@]} -eq 0 ]; then
+        workdir=$(realpath -e "$PWD") || exit 64
+
+        # Inside a git repository, the whole working tree is writable, and so
+        # is the git dir, which a worktree or a submodule keeps outside it.
+        writable=$workdir
+        gitdir=
+        if toplevel=$(git -C "$workdir" rev-parse --show-toplevel 2>/dev/null); then
+            writable=$toplevel
+            gitdir=$(git -C "$workdir" rev-parse --path-format=absolute --git-common-dir)
+        fi
+        refuse "$writable"
+        mounts+=(--bind "$writable" "$writable")
+        [ -n "$gitdir" ] && mounts+=(--bind "$gitdir" "$gitdir")
+    else
+        workdir=/work
+        mounts+=(--tmpfs /work)
+        declare -A seen=()
+        for d in "${write_dirs[@]}"; do
+            d=$(realpath -e "$d") || exit 64
+            refuse "$d"
+            name=$(basename "$d")
+            if [ -n "${seen[$name]:-}" ]; then
+                echo "refusing: $d and ${seen[$name]} are both /work/$name" >&2
+                exit 64
+            fi
+            seen[$name]=$d
+            mounts+=(--bind "$d" "/work/$name")
+            # A worktree or a submodule keeps its git dir outside it, at a host
+            # path.
+            if [ "$(git -C "$d" rev-parse --show-toplevel 2>/dev/null)" = "$d" ]; then
+                gitdir=$(git -C "$d" rev-parse --path-format=absolute --git-common-dir)
+                mounts+=(--bind "$gitdir" "$gitdir")
+            fi
+        done
+    fi
     # A socket seen through the overlay refuses connections: the agent's
     # directory is bound on top, so git over ssh can use the host keys.
     if [ -S "${SSH_AUTH_SOCK:-}" ]; then
@@ -281,4 +300,4 @@ bwrap \
     "${mask[@]}" \
     "${unshare[@]}" \
     --chdir "$workdir" \
-    /usr/bin/claude "${add_dirs[@]}" "$@"
+    /usr/bin/claude "$@"

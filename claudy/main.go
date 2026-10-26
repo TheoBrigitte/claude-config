@@ -49,8 +49,10 @@ Claudy flags:
                               MODE is standard (default), network-only or
                               docker
   -m MODE                     Same as --sandbox=MODE
-      --write-dir DIR         Make DIR writable in the sandbox too (repeatable,
-                              not in network-only mode)
+      --write-dir DIR         Start the sandbox in an empty /work with DIR
+                              mounted read-write at /work/<basename>, and the
+                              current directory not mounted (repeatable, not
+                              in network-only mode)
       --no-sandbox            Do not run claude inside a sandbox
       --speak                 Enable voice mode (tap) and read each reply
                               aloud (speak.sh Stop hook)
