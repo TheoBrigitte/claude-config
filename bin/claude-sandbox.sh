@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Run Claude in a bubblewrap jail, at one of three isolation levels.
 #
-# Usage: claude-sandbox.sh [-m MODE] [claude args...]
+# Usage: claude-sandbox.sh [-m MODE] [-w DIR]... [--] [claude args...]
 #
-# The current directory is the one writable path. Inside a git repository, the
-# whole working tree and its git dir are.
+# The current directory is writable. Inside a git repository, the whole working
+# tree and its git dir are. Each -w DIR is writable too, and claude gets it with
+# --add-dir. network-only mode rejects -w.
 #
 #   standard      (default) the whole home directory is visible through a
 #                 throwaway overlay, so every tool config (kube, aws, gh,
@@ -22,14 +23,25 @@
 set -eu
 
 mode=standard
-case "${1:-}" in
-    -m|--mode) mode=${2:?missing mode}; shift 2;;
-esac
+write_dirs=()
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -m|--mode) mode=${2:?missing mode}; shift 2;;
+        -w|--write-dir) write_dirs+=("${2:?missing directory}"); shift 2;;
+        --) shift; break;;
+        *) break;;
+    esac
+done
 
 case "$mode" in
     standard|docker|network-only) ;;
     *) echo "unknown mode: $mode (standard, network-only, docker)" >&2; exit 64;;
 esac
+
+if [ "$mode" = network-only ] && [ ${#write_dirs[@]} -gt 0 ]; then
+    echo "network-only mode mounts no host directory, -w is not allowed" >&2
+    exit 64
+fi
 
 home=$(realpath -e "$HOME")
 uid=$(id -u)
@@ -142,6 +154,7 @@ for v in "${prefixed_env[@]}"; do
 done
 
 mounts=()
+add_dirs=()
 unshare=(--unshare-all --share-net)
 workdir=
 scratch=$(mktemp -d)
@@ -192,13 +205,16 @@ else
         gitdir=$(git -C "$workdir" rev-parse --path-format=absolute --git-common-dir)
     fi
 
-    case "$home/" in
-        "$writable"/*) echo "refusing: $writable is or contains \$HOME" >&2; exit 64;;
-    esac
-    if [ "$writable" = "/" ]; then
-        echo "refusing to make / writable" >&2
-        exit 64
-    fi
+    refuse() {
+        case "$home/" in
+            "$1"/*) echo "refusing: $1 is or contains \$HOME" >&2; exit 64;;
+        esac
+        if [ "$1" = "/" ]; then
+            echo "refusing to make / writable" >&2
+            exit 64
+        fi
+    }
+    refuse "$writable"
 
     # Writes to the home overlay are discarded on exit, so everything outside
     # ~/.claude and the working tree does not persist.
@@ -210,6 +226,12 @@ else
         --bind        "$writable" "$writable"
     )
     [ -n "$gitdir" ] && mounts+=(--bind "$gitdir" "$gitdir")
+    for d in "${write_dirs[@]}"; do
+        d=$(realpath -e "$d") || exit 64
+        refuse "$d"
+        mounts+=(--bind "$d" "$d")
+        add_dirs+=(--add-dir "$d")
+    done
     # A socket seen through the overlay refuses connections: the agent's
     # directory is bound on top, so git over ssh can use the host keys.
     if [ -S "${SSH_AUTH_SOCK:-}" ]; then
@@ -259,4 +281,4 @@ bwrap \
     "${mask[@]}" \
     "${unshare[@]}" \
     --chdir "$workdir" \
-    /usr/bin/claude "$@"
+    /usr/bin/claude "${add_dirs[@]}" "$@"
