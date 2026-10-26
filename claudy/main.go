@@ -49,6 +49,8 @@ Claudy flags:
                               MODE is standard (default), network-only or
                               docker
   -m MODE                     Same as --sandbox=MODE
+      --write-dir DIR         Make DIR writable in the sandbox too (repeatable,
+                              not in network-only mode)
       --no-sandbox            Do not run claude inside a sandbox
       --speak                 Enable voice mode (tap) and read each reply
                               aloud (speak.sh Stop hook)
@@ -61,7 +63,8 @@ All other flags are passed through to claude.`,
   claudy --mcp-servers github,pagerduty
   claudy --mcp-servers github --mcp-servers pagerduty
   claudy --mcp-servers github --print --output-format json 'Hi'
-  claudy --sandbox=docker --mcp-servers github`,
+  claudy --sandbox=docker --mcp-servers github
+  claudy --write-dir ~/projects/other --write-dir ~/notes`,
 	SilenceUsage:       true,
 	SilenceErrors:      true,
 	DisableFlagParsing: true,
@@ -72,6 +75,7 @@ type parsedArgs struct {
 	help        bool
 	sandbox     bool
 	sandboxMode string
+	writeDirs   []string
 	mcpList     bool
 	presetList  bool
 	presetName  string
@@ -102,6 +106,11 @@ func parseArgs(args []string) parsedArgs {
 			i++
 			p.sandbox = true
 			p.sandboxMode = args[i]
+		case args[i] == "--write-dir" && i+1 < len(args):
+			i++
+			p.writeDirs = append(p.writeDirs, args[i])
+		case strings.HasPrefix(args[i], "--write-dir="):
+			p.writeDirs = append(p.writeDirs, strings.TrimPrefix(args[i], "--write-dir="))
 		case args[i] == "--no-sandbox":
 			p.sandbox = false
 		case args[i] == "--yolo":
@@ -372,6 +381,12 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 		}
 		command = sandboxPath
 		args = []string{sandboxPath, "-m", p.sandboxMode}
+		for _, d := range p.writeDirs {
+			args = append(args, "-w", d)
+		}
+		args = append(args, "--")
+	} else if len(p.writeDirs) > 0 {
+		log.Warn().Msg("--write-dir has no effect without the sandbox")
 	}
 	args = append(args, claudeArgs...)
 	args = append(args, userArgs...)
