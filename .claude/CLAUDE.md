@@ -97,6 +97,21 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - Always create Github pull requests as drafts.
 - Always assign me (TheoBrigitte) as the pull request author.
+- Always write the pull request description in this format:
+
+```markdown
+### Problem
+
+<describe the problem this PR is solving>
+
+### Solution
+
+<describe how the problem is being solved with this PR>
+
+### Validation (optional)
+
+<add validation steps performed to validate this solution>
+```
 
 ## Commit After Each Change
 
