@@ -6,7 +6,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"syscall"
 
@@ -41,6 +43,9 @@ var rootCmd = &cobra.Command{
 Claudy flags:
       --mcp-servers list      List available MCP servers
       --mcp-servers strings   MCP servers to launch (comma-separated or repeated)
+      --claudeai-mcp list     List available claude.ai MCP servers
+      --claudeai-mcp strings  claude.ai MCP servers to launch (comma-separated
+                              or repeated), all others stay blocked
       --grafana-org string    Grafana organization name
   -p, --preset string         Use a predefined preset (e.g. sre)
       --preset-list           List available presets
@@ -64,6 +69,8 @@ All other flags are passed through to claude.`,
   claudy --preset sre
   claudy --mcp-servers github,pagerduty
   claudy --mcp-servers github --mcp-servers pagerduty
+  claudy --claudeai-mcp list
+  claudy --mcp-servers github --claudeai-mcp "Google Calendar,Gmail"
   claudy --mcp-servers github --print --output-format json 'Hi'
   claudy --sandbox=docker --mcp-servers github
   claudy --write-dir ~/projects/other --write-dir ~/notes`,
@@ -74,17 +81,19 @@ All other flags are passed through to claude.`,
 }
 
 type parsedArgs struct {
-	help        bool
-	sandbox     bool
-	sandboxMode string
-	writeDirs   []string
-	mcpList     bool
-	presetList  bool
-	presetName  string
-	mcpServers  []string
-	userArgs    []string
-	yolo        bool
-	speak       bool
+	help            bool
+	sandbox         bool
+	sandboxMode     string
+	writeDirs       []string
+	mcpList         bool
+	presetList      bool
+	presetName      string
+	mcpServers      []string
+	claudeaiList    bool
+	claudeaiServers []string
+	userArgs        []string
+	yolo            bool
+	speak           bool
 }
 
 // parseArgs extracts claudy-specific flags from args and returns the remaining
@@ -144,6 +153,23 @@ func parseArgs(args []string) parsedArgs {
 			for s := range strings.SplitSeq(val, ",") {
 				if s = strings.TrimSpace(s); s != "" {
 					p.mcpServers = append(p.mcpServers, s)
+				}
+			}
+		case args[i] == "--claudeai-mcp" && i+1 < len(args) && args[i+1] == "list":
+			i++
+			p.claudeaiList = true
+		case args[i] == "--claudeai-mcp" && i+1 < len(args):
+			i++
+			for s := range strings.SplitSeq(args[i], ",") {
+				if s = strings.TrimSpace(s); s != "" {
+					p.claudeaiServers = append(p.claudeaiServers, s)
+				}
+			}
+		case strings.HasPrefix(args[i], "--claudeai-mcp="):
+			val := strings.TrimPrefix(args[i], "--claudeai-mcp=")
+			for s := range strings.SplitSeq(val, ",") {
+				if s = strings.TrimSpace(s); s != "" {
+					p.claudeaiServers = append(p.claudeaiServers, s)
 				}
 			}
 		default:
@@ -219,6 +245,77 @@ func listServers(mcpDirPath string) error {
 	return nil
 }
 
+// claudeaiLine matches a claude.ai server in the `claude mcp list` output:
+// "claude.ai <name>: <url> - <status>".
+var claudeaiLine = regexp.MustCompile(`^claude\.ai (.+?): (\S+) - `)
+
+// claudeaiConnectors returns the claude.ai MCP servers, with their URL as
+// description.
+func claudeaiConnectors() ([]serverEntry, error) {
+	out, err := exec.Command(claudeCmd, "mcp", "list").Output()
+	if err != nil {
+		return nil, fmt.Errorf("failed to list claude.ai MCP servers: %w", err)
+	}
+	var servers []serverEntry
+	for line := range strings.Lines(string(out)) {
+		if m := claudeaiLine.FindStringSubmatch(line); m != nil {
+			servers = append(servers, serverEntry{name: m[1], desc: m[2]})
+		}
+	}
+	return servers, nil
+}
+
+func listClaudeaiServers() error {
+	servers, err := claudeaiConnectors()
+	if err != nil {
+		return err
+	}
+	maxLen := len("NAME")
+	for _, s := range servers {
+		if len(s.name) > maxLen {
+			maxLen = len(s.name)
+		}
+	}
+	fmt.Printf("  %-*s  %s\n", maxLen, "NAME", "URL")
+	for _, s := range servers {
+		fmt.Printf("  %-*s  %s\n", maxLen, s.name, s.desc)
+	}
+	return nil
+}
+
+// allowEntries returns the allowedMcpServers entries for the servers in the
+// MCP config at path: serverUrl for remote servers, serverCommand for local
+// ones. serverName does not accept every name (e.g. incident.io).
+func allowEntries(path string) ([]map[string]any, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var cfg struct {
+		MCPServers map[string]struct {
+			URL     string   `json:"url"`
+			Command string   `json:"command"`
+			Args    []string `json:"args"`
+		} `json:"mcpServers"`
+	}
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse %s: %w", path, err)
+	}
+	var entries []map[string]any
+	for _, s := range cfg.MCPServers {
+		if s.URL != "" {
+			entries = append(entries, map[string]any{"serverUrl": os.ExpandEnv(s.URL)})
+			continue
+		}
+		command := []string{os.ExpandEnv(s.Command)}
+		for _, a := range s.Args {
+			command = append(command, os.ExpandEnv(a))
+		}
+		entries = append(entries, map[string]any{"serverCommand": command})
+	}
+	return entries, nil
+}
+
 func listPresets() {
 	maxLen := 0
 	for name := range presets {
@@ -272,6 +369,10 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 		return nil
 	}
 
+	if p.claudeaiList {
+		return listClaudeaiServers()
+	}
+
 	// Apply preset if specified
 	mcpServers := p.mcpServers
 	if p.presetName != "" {
@@ -317,7 +418,32 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 		claudeArgs = append(claudeArgs, "--no-chrome")
 	}
 
-	claudeArgs = append(claudeArgs, "--strict-mcp-config")
+	// claude.ai MCP servers only load without --strict-mcp-config. An
+	// allowlist then blocks every server except the requested claude.ai
+	// ones and the --mcp-config ones.
+	var allowed []map[string]any
+	if len(p.claudeaiServers) > 0 {
+		connectors, err := claudeaiConnectors()
+		if err != nil {
+			return err
+		}
+		for _, name := range p.claudeaiServers {
+			i := slices.IndexFunc(connectors, func(c serverEntry) bool { return c.name == name })
+			if i < 0 {
+				return fmt.Errorf("unknown claude.ai MCP server '%s' (use --claudeai-mcp list to see available servers)", name)
+			}
+			allowed = append(allowed, map[string]any{"serverUrl": connectors[i].desc})
+		}
+		for _, cfg := range mcpConfigs {
+			entries, err := allowEntries(cfg)
+			if err != nil {
+				return err
+			}
+			allowed = append(allowed, entries...)
+		}
+	} else {
+		claudeArgs = append(claudeArgs, "--strict-mcp-config")
+	}
 
 	if len(mcpConfigs) > 0 {
 		claudeArgs = append(claudeArgs, "--mcp-config")
@@ -336,16 +462,21 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 		log.Warn().Msgf("%s not found, skipping --settings overlay", settingsName)
 	}
 
-	if p.speak {
-		os.Setenv("CLAUDE_SPEAK", "1")
-		// claude takes a single --settings: the overlay and the
-		// settings.speak.json keys go in as one JSON string.
+	if p.speak || len(allowed) > 0 {
+		// claude takes a single --settings: the overlay, the
+		// settings.speak.json keys and the claude.ai allowlist go in as
+		// one JSON string.
 		overlay := map[string]any{}
-		speakSettings := settingsPath("settings.speak.json")
-		if speakSettings == "" {
-			log.Warn().Msg("settings.speak.json not found, skipping speak settings")
+		paths := []string{settings}
+		if p.speak {
+			os.Setenv("CLAUDE_SPEAK", "1")
+			speakSettings := settingsPath("settings.speak.json")
+			if speakSettings == "" {
+				log.Warn().Msg("settings.speak.json not found, skipping speak settings")
+			}
+			paths = append(paths, speakSettings)
 		}
-		for _, path := range []string{settings, speakSettings} {
+		for _, path := range paths {
 			if path == "" {
 				continue
 			}
@@ -356,6 +487,9 @@ func run(cmd *cobra.Command, rawArgs []string) error {
 			if err := json.Unmarshal(data, &overlay); err != nil {
 				return fmt.Errorf("failed to parse %s: %w", path, err)
 			}
+		}
+		if len(allowed) > 0 {
+			overlay["allowedMcpServers"] = allowed
 		}
 		data, err := json.Marshal(overlay)
 		if err != nil {
