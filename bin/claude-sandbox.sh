@@ -102,7 +102,6 @@ keep_env=(
 # Passed in with the CLAUDE_ prefix stripped: GITHUB_TOKEN, SLACK_TOKEN, ...
 prefixed_env=(
     CLAUDE_GITHUB_TOKEN
-    CLAUDE_INCIDENT_IO_API_KEY
     CLAUDE_PAGERDUTY_USER_API_KEY
     # The circleci CLI reads its token from here, in every mode.
     CLAUDE_CIRCLE_TOKEN
