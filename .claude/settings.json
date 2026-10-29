@@ -2,15 +2,7 @@
   "env": {
     "DISABLE_AUTOUPDATER": "1",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1",
-    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
-    "OTEL_LOGS_EXPORTER": "otlp",
-    "OTEL_METRICS_EXPORTER": "otlp",
-    "OTEL_EXPORTER_OTLP_LOGS_PROTOCOL": "http/protobuf",
-    "OTEL_EXPORTER_OTLP_LOGS_ENDPOINT": "https://write.loki.graveler.gaws2.gigantic.io/otlp/v1/logs",
-    "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL": "http/protobuf",
-    "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT": "https://mimir.graveler.gaws2.gigantic.io/otlp/v1/metrics",
-    "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "cumulative"
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING": "1"
   },
   "permissions": {
     "allow": [
