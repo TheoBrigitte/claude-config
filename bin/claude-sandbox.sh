@@ -97,6 +97,9 @@ keep_env=(
     GRAFANA_USERNAME
     JINA_API_KEY
     N8N_API_KEY
+    # Claude Code sends these with its OpenTelemetry logs and metrics.
+    OTEL_EXPORTER_OTLP_LOGS_HEADERS
+    OTEL_EXPORTER_OTLP_METRICS_HEADERS
 )
 
 # Passed in with the CLAUDE_ prefix stripped: GITHUB_TOKEN, SLACK_TOKEN, ...
