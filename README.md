@@ -16,7 +16,7 @@
 # Install Claude configuration
 # mv ~/.claude ~/.claude.bak  # backup existing config if needed
 git clone https://github.com/TheoBrigitte/claude-config.git
-ln -srvT claude-config/.claude ~/.claude
+ln -srvT claude-config/claude ~/.claude
 
 # Install claudy
 cd claude-config/claudy
@@ -48,7 +48,7 @@ claudy --mcp-servers github -- --resume  # pass extra flags to claude
 
 Claudy reads JSON config files from [mcp-servers/](mcp-servers/) and passes them to `claude --mcp-config`. It also handles a Grafana MCP hook that sets up kubectl port-forwarding and Grafana service account tokens automatically.
 
-## ⚙️ [.claude/](.claude/)
+## ⚙️ [claude/](claude/)
 
 This is the standard configuration directory for Claude, it contains:
 
@@ -66,7 +66,7 @@ It requires configuration via environment variables:
 
 Desktop notification support is configured using `notify-send`. Claude uses this to send notifications for permission requests or when it needs the user attention.
 
-This is configured via hooks in the [.claude/settings.json](.claude/settings.json) file and the [.claude/hooks/notify.sh](.claude/hooks/notify.sh) notification script.
+This is configured via hooks in the [claude/settings.json](claude/settings.json) file and the [claude/hooks/notify.sh](claude/hooks/notify.sh) notification script.
 
 An optional icon path can be specified via the `CLAUDE_CONFIG_ICON_PATH` environment variable.
 
