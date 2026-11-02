@@ -38,7 +38,7 @@ They apply to humans and AI agents alike.
 - **Containers:** one box per cluster, environment or system. Center the label on the box.
 - **Repeated containers:** draw 2 offset cards behind the box. Add `(× N)` to the label.
 - **Nesting:** a product or platform inside a cluster gets a tinted box. Center its title inside, with its logo on the left.
-- **Columns:** group components in columns with uppercase section labels, e.g. `QUERY & ALERT`, `STORE`, `INGEST`.
+- **Columns:** group components in columns with uppercase section labels, e.g. `INGRESS`, `SERVICES`, `STORAGE`.
 - **Configuration:** Kubernetes Custom Resources & Configuration sit below the container that reads them. Arrows point up to the reader.
 - **External actors:** dashed pill boxes outside the containers.
 - **Margins:** 30px between a container edge and its content. Keep margins even on all sides.
@@ -55,11 +55,6 @@ They apply to humans and AI agents alike.
   | Giant Swarm icon | `giantswarm/happa`: `src/images/giantswarm_icon.svg` |
   | Giant Swarm logo | `giantswarm/brand`: `logo/` |
   | Kubernetes | `kubernetes/kubernetes`: `logo/logo.svg` |
-  | Grafana | `grafana/grafana`: `public/img/grafana_icon.svg` |
-  | Mimir | `grafana/grafana`: `public/app/features/alerting/unified/rule-list/components/img/mimir_logo.svg` |
-  | Loki | `grafana/grafana`: `public/app/features/loki-helpers/loki_icon.svg` |
-  | Tempo | `grafana/tempo`: `cmd/tempo/app/static/tempo-icon.png` |
-  | Alloy | `grafana/alloy`: `docs/sources/assets/alloy_icon_orange.svg` |
 
 - **Finding other logos:** search the project's GitHub tree for `logo` or `icon` files. CNCF projects also publish logos in `cncf/artwork`.
 - **Embedding:** embed logos as base64 data URIs. The SVG stays a single file.
@@ -88,7 +83,7 @@ Pick one color per flow type. Show every type used in the legend. Default palett
 - **Two-way arrows:** only when data flows both ways.
 - **Routing:** horizontal and vertical segments only. Merge parallel arrows into a shared bus line.
 - **Crossings:** avoid them. When a crossing is unavoidable, cut a small gap in the lower line with a halo the color of the background.
-- **Labels:** 11px italic gray, a few words only, e.g. `direct`, `via Alloy`, `remote write`.
+- **Labels:** 11px italic gray, a few words only, e.g. `direct`, `via proxy`, `every 5m`.
 - **Owner colors:** in ownership or tenancy diagrams, color arrows by owner. Default owner palette: `#dc2626`, `#16a34a`, `#2563eb`, `#d97706`, `#7c3aed`.
 
 ## Colors
@@ -109,7 +104,7 @@ Brand colors come from the Giant Swarm styleguide.
 | Section labels | `#64748b` |
 
 - **Tints:** mix Vivid Blue `#009fff` into Giant Swarm White `#f0f7f9`. About 8% gives `#ddf0fa`.
-- **Component tints:** give each component family a light fill and a matching border, e.g. storage `#fff7ed` / `#c2410c`, agents `#fef2f2` / `#dc2626`, dashboards `#fffbeb` / `#d97706`.
+- **Component tints:** give each component family a light fill and a matching border, e.g. storage `#fff7ed` / `#c2410c`, controllers `#fef2f2` / `#dc2626`, user interfaces `#fffbeb` / `#d97706`.
 - **YAML highlighting:** keys `#8250df`, values `#0a3069`, colons and dashes `#6e7781`, comments `#6e7781` italic. Highlighted values stay bold in their owner color.
 
 ## Typography
@@ -130,11 +125,11 @@ Brand colors come from the Giant Swarm styleguide.
 
 ## Wording
 
-- **Title:** `<Product>: <View>`, e.g. `Observability Platform: Overview`.
+- **Title:** `<Product>: <View>`, e.g. `Developer Platform: Overview`.
 - **Subtitle:** one sentence on what the diagram shows.
 - **Names:** follow the glossary. One name per component, everywhere.
 - **Spelling:** American English, e.g. "organization".
-- **Descriptions:** a short noun phrase, e.g. "metrics", "logs agent", "notifications".
+- **Descriptions:** a short noun phrase, e.g. "ingress controller", "DNS records", "notifications".
 - **No invention:** add no component, link or detail the source lacks. Ask when unsure.
 
 ## SVG pitfalls
