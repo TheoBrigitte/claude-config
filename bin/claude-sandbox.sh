@@ -177,8 +177,8 @@ trap 'rm -rf "$scratch"' EXIT
 # token survive the jail. Claude refreshes that token in place and the refresh
 # token rotates, so a refresh dropped with the overlay invalidates the token on
 # the host too. Hooks are the exception: they run unsandboxed on the host, so
-# the jail sees hooks/, settings.json and plugins/ read-only. Plugin installs
-# therefore do not persist.
+# the jail sees hooks/, settings.json and plugins/ read-only, except for a
+# throwaway overlay on plugins/cache. Plugin installs therefore do not persist.
 cdir=$(realpath -e "$home/.claude")
 
 # Claude asks whether to trust the working directory and records the answer in
@@ -274,6 +274,12 @@ fi
 for p in hooks settings.json plugins; do
     [ -e "$cdir/$p" ] && mounts+=(--ro-bind "$cdir/$p" "$cdest/$p")
 done
+# Claude writes in-use markers into the plugin cache. A throwaway overlay takes
+# them and keeps the host copy untouched.
+[ -d "$cdir/plugins/cache" ] && mounts+=(
+    --overlay-src "$cdir/plugins/cache"
+    --tmp-overlay "$cdest/plugins/cache"
+)
 
 if [ "${CLAUDE_SPEAK:-}" = 1 ]; then
     # Voice mode records through pipewire, the speak.sh Stop hook talks to
