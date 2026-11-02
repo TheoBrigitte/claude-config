@@ -64,7 +64,7 @@ They apply to humans and AI agents alike.
 - **Finding other logos:** search the project's GitHub tree for `logo` or `icon` files. CNCF projects also publish logos in `cncf/artwork`.
 - **Embedding:** embed logos as base64 data URIs. The SVG stays a single file.
 - **Giant Swarm components:** Giant Swarm Blue fill, white text, Giant Swarm icon. Mark only components Giant Swarm builds and owns.
-- **Ownership tags:** add a small italic tag such as `not Atlas` on components another team owns.
+- **Ownership tags:** add a small italic tag such as `owned by <team>` on components another team owns.
 - **Storage:** draw databases and object storage as cylinders below their owner.
 - **Many links from one component:** list the targets inside the box. Draw no arrow per target.
 - **Containment over arrows:** a component that controls a whole box sits inside it, e.g. an operator as a band at the bottom.
