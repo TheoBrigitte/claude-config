@@ -130,7 +130,7 @@ Brand colors come from the Giant Swarm styleguide.
 - **Names:** follow the glossary. One name per component, everywhere.
 - **Spelling:** American English, e.g. "organization".
 - **Descriptions:** a short noun phrase, e.g. "ingress controller", "DNS records", "notifications".
-- **No invention:** add no component, link or detail the source lacks. Ask when unsure.
+- **No invention:** add no component or link the source lacks. Ask when unsure. Write a description for every component. List each description the source lacks in the handoff.
 
 ## SVG pitfalls
 
