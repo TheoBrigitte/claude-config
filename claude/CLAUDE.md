@@ -119,6 +119,29 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Name a specific file, flag or function only when the reviewer needs it to judge the change.
 - Open the Solution and Validation sections with a high-level summary.
 - Keep the Solution and Validation to a few sentences or a short list of high-level points.
+- When asked to reword a PR body, reword it and add a high-level explanation summary to the Solution and Validation sections.
+
+## Changelog
+
+- When you change code in a repository that has a CHANGELOG.md, add an entry before committing or opening a pull request.
+- Follow Keep a Changelog 1.1.0: https://keepachangelog.com/en/1.1.0/
+- Add new entries under `## [Unreleased]` at the top of the file.
+- Group entries under these headings, in this order:
+  - `### Added` for new features.
+  - `### Changed` for changes in existing functionality.
+  - `### Deprecated` for soon-to-be removed features.
+  - `### Removed` for now removed features.
+  - `### Fixed` for any bug fixes.
+  - `### Security` in case of vulnerabilities.
+- Add a heading only when it has entries.
+- Write release headings as `## [x.y.z] - YYYY-MM-DD`.
+- Match the existing style of the file: headings, link references, bullet wording.
+- Write each entry for the users of the project.
+- Describe the notable change the user sees.
+- Never copy commit messages or list the diff changes.
+- Write one change per bullet.
+- Always record deprecations, removals and breaking changes.
+- Skip trivial changes such as typo fixes or internal refactors with no user impact.
 
 ## Commit After Each Change
 
