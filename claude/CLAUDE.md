@@ -110,14 +110,16 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ### Validation (optional)
 
-<add validation steps performed to validate this solution>
+<summarize at a high level how the solution was validated>
 ```
 
 - Write the description for a reviewer who has not seen the work.
 - Explain the motivation, the scope and the impact. The reviewer reads the diff for the details.
 - Never list the diff changes. No file-by-file or function-by-function walkthroughs.
 - Name a specific file, flag or function only when the reviewer needs it to judge the change.
-- Keep the Solution to a few sentences or a short list of high-level points.
+- Open the Solution and Validation sections with a high-level summary.
+- Keep the Solution and Validation to a few sentences or a short list of high-level points.
+- Never paste raw command output or every test case into Validation.
 - The "Never justify" rule does not apply to the Problem section. State the motivation there.
 
 ## Commit After Each Change
