@@ -119,7 +119,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Name a specific file, flag or function only when the reviewer needs it to judge the change.
 - Open the Solution and Validation sections with a high-level summary.
 - Keep the Solution and Validation to a few sentences or a short list of high-level points.
-- Never paste raw command output or every test case into Validation.
 - The "Never justify" rule does not apply to the Problem section. State the motivation there.
 
 ## Commit After Each Change
