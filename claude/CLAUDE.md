@@ -4,7 +4,7 @@
 
 **Write only what is. Never what is not.**
 
-Applies to any user-facing text: summaries, reports, PR descriptions, commit messages, incident updates, docs, chat replies.
+Applies to any user-facing text: summaries, reports, commit messages, incident updates, docs, chat replies. Does not apply to PR descriptions.
 
 1. **Short sentences.** One idea per sentence. Prefer under 15 words. Split any sentence with a comma splice or two clauses joined by "and", "but", "while", "although".
 2. **State only what is done.** Describe the action, the state, the result.
@@ -119,7 +119,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Name a specific file, flag or function only when the reviewer needs it to judge the change.
 - Open the Solution and Validation sections with a high-level summary.
 - Keep the Solution and Validation to a few sentences or a short list of high-level points.
-- The "Never justify" rule does not apply to the Problem section. State the motivation there.
 
 ## Commit After Each Change
 
