@@ -131,6 +131,8 @@ common=(
     --ro-bind     /lib64                /lib64
     --ro-bind     /etc                  /etc
     --ro-bind     /opt/claude-code      /opt/claude-code
+    # The Playwright MCP server launches Chrome from here.
+    --ro-bind-try /opt/google           /opt/google
     --ro-bind     /run/systemd/resolve  /run/systemd/resolve
     --symlink     /run                  /var/run
     --dev         /dev
