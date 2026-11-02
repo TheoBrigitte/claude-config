@@ -24,9 +24,9 @@ They apply to humans and AI agents alike.
 
 | Type | Layout |
 |---|---|
-| Architecture | Containers for clusters or systems. Components in columns. Data flows in one direction. |
-| Data flow | Sources on one side, sinks on the other. One color per flow type. |
-| Process or flowchart | Steps left to right or top to bottom. Decisions as diamonds. One path per outcome. |
+| Architecture | Containers for clusters or systems. Components in columns. Data flows left to right. |
+| Data flow | Sources on the left, sinks on the right. One color per flow type. |
+| Process or flowchart | Steps left to right. Decisions as diamonds. One path per outcome. |
 | Sequence | Actors as columns. Time flows downward. Numbered messages. |
 | Deployment | Environments as containers. Clusters inside environments. Workloads inside clusters. |
 | Ownership or tenancy | One color per owner or tenant, used for boxes and arrows alike. |
@@ -34,7 +34,7 @@ They apply to humans and AI agents alike.
 ## Structure
 
 - **Header:** title top-left, subtitle below it, legend top-right.
-- **Orientation:** consumers on the left, producers on the right. Keep one main direction for the whole diagram.
+- **Orientation:** data flows left to right. Producers on the left, consumers on the right.
 - **Containers:** one box per cluster, environment or system. Center the label on the box.
 - **Repeated containers:** draw 2 offset cards behind the box. Add `(× N)` to the label.
 - **Nesting:** a product or platform inside a cluster gets a tinted box. Center its title inside, with its logo on the left.
