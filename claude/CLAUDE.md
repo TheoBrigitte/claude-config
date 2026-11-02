@@ -102,16 +102,23 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ```markdown
 ### Problem
 
-<describe the problem this PR is solving>
+<describe the problem this PR is solving and why it matters>
 
 ### Solution
 
-<describe how the problem is being solved with this PR>
+<describe the approach at a high level, its scope and its impact>
 
 ### Validation (optional)
 
 <add validation steps performed to validate this solution>
 ```
+
+- Write the description for a reviewer who has not seen the work.
+- Explain the motivation, the scope and the impact. The reviewer reads the diff for the details.
+- Never list the diff changes. No file-by-file or function-by-function walkthroughs.
+- Name a specific file, flag or function only when the reviewer needs it to judge the change.
+- Keep the Solution to a few sentences or a short list of high-level points.
+- The "Never justify" rule does not apply to the Problem section. State the motivation there.
 
 ## Commit After Each Change
 
