@@ -8,4 +8,5 @@ NS=claude-theo
 POD=claude-0
 
 kubectl --context "$CTX" -n "$NS" exec -it "$POD" -c claude -- \
+  env TERM="${TERM:-xterm-256color}" LANG=C.UTF-8 LC_ALL=C.UTF-8 \
   /home/node/micromamba/envs/tools/bin/tmux attach -t main
