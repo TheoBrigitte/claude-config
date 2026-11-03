@@ -1,13 +1,26 @@
-FROM node:22-bookworm-slim
-
+ARG TARGETARCH
 ARG CLAUDE_CODE_VERSION=2.1.317
 
-RUN apt-get update \
- && apt-get install -y --no-install-recommends ca-certificates procps \
- && rm -rf /var/lib/apt/lists/*
+# Checksums from https://downloads.claude.ai/claude-code-releases/<version>/manifest.json
+FROM scratch AS claude-amd64
+ARG CLAUDE_CODE_VERSION
+ADD --chmod=0755 --checksum=sha256:bcc2be9105875dc31a44825ede92e46c4f98225eeb3ad617340daa217100339b \
+    https://downloads.claude.ai/claude-code-releases/${CLAUDE_CODE_VERSION}/linux-x64-musl/claude /claude
 
-RUN npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
- && npm cache clean --force
+FROM scratch AS claude-arm64
+ARG CLAUDE_CODE_VERSION
+ADD --chmod=0755 --checksum=sha256:dc8c59cf937e60e9cc93afe226ef437474ded56ba813743d09106d24a08c83bd \
+    https://downloads.claude.ai/claude-code-releases/${CLAUDE_CODE_VERSION}/linux-arm64-musl/claude /claude
+
+FROM claude-${TARGETARCH} AS claude
+
+FROM alpine:3.24
+
+RUN apk add --no-cache bash ca-certificates coreutils gzip libgcc libstdc++ nodejs procps-ng tar \
+ && addgroup -g 1000 node \
+ && adduser -D -u 1000 -G node -h /home/node -s /bin/bash node
+
+COPY --from=claude /claude /usr/local/bin/claude
 
 ENV DISABLE_AUTOUPDATER=1
 
