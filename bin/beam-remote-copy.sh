@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Runs in the remote pod, sent by beam-up.sh.
 #
-# Usage: beam-remote-copy.sh new|resume SESSION_ID [COLORTERM]
+# Usage: beam-remote-copy.sh new|resume|login SESSION_ID [COLORTERM]
 #
-# SESSION_ID is ignored with new.
+# SESSION_ID is ignored with new. With login, it is optional and may be short.
 #
 # Reads a tar on stdin and extracts it at /. Its members carry their
 # destination paths:
@@ -17,6 +17,9 @@
 # (new), or installs the transcript and resumes it as a background session
 # (resume). Writes the session's short ID to ~/.beam-session for
 # beam-attach.sh, and prints it.
+# login, sent by beam-attach.sh: resumes the session from its transcript if
+# the daemon doesn't run it. The session defaults to ~/.beam-session. Prints
+# its short ID.
 set -euo pipefail
 umask 077
 
@@ -54,7 +57,20 @@ node -e '
 until "$CLAUDE" daemon status >/dev/null 2>&1; do sleep 1; done
 
 cd /home/node/work
-if [ "$mode" = new ]; then
+if [ "$mode" = login ]; then
+  [ -n "$id" ] || id=$(cat /home/node/.beam-session)
+  set -- "$PROJECT/$id"*.jsonl
+  if [ $# -ne 1 ] || [ ! -e "$1" ]; then
+    echo "No single transcript for session $id" >&2
+    exit 1
+  fi
+  full=$(basename "$1" .jsonl)
+  if ! "$CLAUDE" agents --json | grep -qF "\"sessionId\": \"$full\""; then
+    COLORTERM=$colorterm "$CLAUDE" --bg --resume "$full" >/dev/null
+  fi
+  echo "${full:0:8}"
+  exit
+elif [ "$mode" = new ]; then
   # --bg picks its own session ID: it ignores --session-id.
   out=$(COLORTERM=$colorterm "$CLAUDE" --bg)
   short=$(sed -n 's/^backgrounded · \([0-9a-f]\{8\}\).*/\1/p' <<<"$out")

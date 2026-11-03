@@ -20,6 +20,8 @@ set -euo pipefail
 BIN="$(dirname "$(readlink -f "$0")")"
 MANIFESTS="$BIN/../k8s/claude-graveler/manifests.yaml"
 POD=claude-0
+# shellcheck source=beam-lib.sh
+. "$BIN/beam-lib.sh"
 USAGE="Usage: beam-up.sh [-n INSTANCE] [--persistent] [--new | SESSION_ID]"
 
 instance='' new='' persistent=''
@@ -73,7 +75,7 @@ if [ -z "$new" ]; then
   dir=$(dirname "$transcript")
   cp "$transcript" "$snap/$id.jsonl"
   [ "$(tail -c 1 "$snap/$id.jsonl")" = "" ] || sed -i '$d' "$snap/$id.jsonl"
-  snapped=(-C "$snap" "$id.jsonl")
+  snapped=(--transform "s,^$id,home/node/.beam/$id,S" -C "$snap" "$id.jsonl")
   if [ -d "$dir/$id" ]; then
     cp -r "$dir/$id" "$snap/"
     snapped+=("$id")
@@ -90,18 +92,8 @@ until kubectl -n "$NS" wait --for=condition=Ready "pod/$POD" --timeout=300s >/de
   sleep 2
 done
 
-# Each member is renamed to its destination path in the pod. The pod prints
-# the session's short ID.
-short=$(tar -cz \
-  --transform 's,^\.claude\.json$,run/claude/config/.claude.json.new,S' \
-  --transform 's,^\.credentials\.json$,run/claude/config/.credentials.json.new,S' \
-  --transform 's,^\.claude/,home/node/.claude/,S' \
-  --transform "s,^$id,home/node/.beam/$id,S" \
-  -C "$(dirname "$(readlink -f "$HOME/.claude.json")")" .claude.json \
-  -C "$HOME/.claude" .credentials.json \
-  -C "$HOME" .claude/settings.json .claude/CLAUDE.md .claude/keybindings.json \
-  .claude/agents .claude/skills .claude/plugins \
-  "${snapped[@]}" |
+# The pod prints the session's short ID.
+short=$(beam_tar "${snapped[@]}" |
   kubectl -n "$NS" exec -i "$POD" -c claude -- \
     bash -c "$(cat "$BIN/beam-remote-copy.sh")" beam-remote-copy.sh "$mode" "$id" "${COLORTERM:-}")
 
