@@ -30,7 +30,7 @@
       "Bash(sort *)",
       "Bash(tree *)",
       "Bash(which *)",
-      "Glob(*)",
+      "Glob",
       "WebFetch",
       "WebSearch",
       "mcp__context7__query-docs",
