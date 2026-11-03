@@ -1,87 +1,109 @@
 #!/usr/bin/env bash
-# Copy a Claude Code session to a remote instance and resume it there, in the
-# current kube context.
+# Create a remote instance and run a Claude Code background session in it, in
+# the current kube context.
 #
-# Usage: beam-up.sh [-n INSTANCE] [SESSION_ID]
+# Usage: beam-up.sh [-n INSTANCE] [--persistent] [--new | SESSION_ID]
 #
 # Without SESSION_ID, copies the session this runs from: run it with
 # `! bin/beam-up.sh` inside Claude Code. The local session keeps running.
-# The remote copy is a fork from this point on.
+# The remote copy is a fork from this point on. With --new, starts an empty
+# session instead.
 #
 # An instance is the namespace claude-theo-INSTANCE with one pod. INSTANCE
-# defaults to the session's short ID. A missing instance is created, with the
-# local settings. An existing one gets the session copied again.
+# defaults to the session's short ID. Every run creates a new instance, with
+# the local settings and the current local login. The login goes into the
+# pod's memory only. --persistent puts the home volume on a 20Gi gp3 PVC.
 #
-# Every run pushes the current local login into the pod's memory. Runs
-# beam-remote-copy.sh in the pod, in one exec.
+# Runs beam-remote-copy.sh in the pod, in one exec.
 set -euo pipefail
 
 BIN="$(dirname "$(readlink -f "$0")")"
 MANIFESTS="$BIN/../k8s/claude-graveler/manifests.yaml"
 POD=claude-0
+USAGE="Usage: beam-up.sh [-n INSTANCE] [--persistent] [--new | SESSION_ID]"
 
-instance=
-while getopts n: opt; do
-  case $opt in
-    n) instance=$OPTARG ;;
-    *) exit 1 ;;
+instance='' new='' persistent=''
+while [ $# -gt 0 ]; do
+  case $1 in
+    -n) instance=${2:?$USAGE}; shift 2 ;;
+    --new) new=1; shift ;;
+    --persistent) persistent=1; shift ;;
+    -*) echo "$USAGE" >&2; exit 1 ;;
+    *) break ;;
   esac
 done
-shift $((OPTIND - 1))
 
-id="${1:-${CLAUDE_CODE_SESSION_ID:-}}"
-if [ -z "$id" ]; then
-  echo "No session ID: pass one, or run this from Claude Code with !" >&2
-  exit 1
+if [ -n "$new" ]; then
+  if [ $# -gt 0 ]; then
+    echo "--new and SESSION_ID are mutually exclusive" >&2
+    exit 1
+  fi
+  # The UUID names the instance only: --bg picks the session ID.
+  id=$(cat /proc/sys/kernel/random/uuid)
+else
+  id="${1:-${CLAUDE_CODE_SESSION_ID:-}}"
+  if [ -z "$id" ]; then
+    echo "No session ID: pass one, or run this from Claude Code with !" >&2
+    exit 1
+  fi
 fi
-short="${id:0:8}"
-instance="${instance:-$short}"
+instance="${instance:-${id:0:8}}"
 if ! [[ $instance =~ ^[a-z0-9]([a-z0-9-]*[a-z0-9])?$ ]]; then
   echo "Invalid instance name: $instance" >&2
   exit 1
 fi
 NS="claude-theo-$instance"
 
-transcript=$(find "$HOME"/.claude/projects/ -maxdepth 2 -name "$id.jsonl" -print -quit)
-if [ -z "$transcript" ]; then
-  echo "No transcript for session $id" >&2
+if kubectl get ns "$NS" >/dev/null 2>&1; then
+  echo "Instance $instance exists: destroy it with bin/beam-destroy.sh $instance, or pick another -n" >&2
   exit 1
 fi
-dir=$(dirname "$transcript")
 
 snap=$(mktemp -d)
 trap 'rm -rf "$snap"' EXIT
-cp "$transcript" "$snap/$id.jsonl"
-[ "$(tail -c 1 "$snap/$id.jsonl")" = "" ] || sed -i '$d' "$snap/$id.jsonl"
-files=("$id.jsonl")
-if [ -d "$dir/$id" ]; then
-  cp -r "$dir/$id" "$snap/"
-  files+=("$id")
+snapped=()
+mode=new
+if [ -z "$new" ]; then
+  mode=resume
+  transcript=$(find "$HOME"/.claude/projects/ -maxdepth 2 -name "$id.jsonl" -print -quit)
+  if [ -z "$transcript" ]; then
+    echo "No transcript for session $id" >&2
+    exit 1
+  fi
+  dir=$(dirname "$transcript")
+  cp "$transcript" "$snap/$id.jsonl"
+  [ "$(tail -c 1 "$snap/$id.jsonl")" = "" ] || sed -i '$d' "$snap/$id.jsonl"
+  snapped=(-C "$snap" "$id.jsonl")
+  if [ -d "$dir/$id" ]; then
+    cp -r "$dir/$id" "$snap/"
+    snapped+=("$id")
+  fi
 fi
 
-settings=()
-if ! kubectl get ns "$NS" >/dev/null 2>&1; then
-  echo "Creating instance $instance"
-  sed "s/INSTANCE/$instance/g" "$MANIFESTS" | kubectl apply -f - >/dev/null
-  until kubectl -n "$NS" wait --for=condition=Ready "pod/$POD" --timeout=300s >/dev/null 2>&1; do
-    sleep 2
-  done
-  settings=(-C "$HOME" .claude/settings.json .claude/CLAUDE.md .claude/keybindings.json
-    .claude/agents .claude/skills .claude/plugins)
+echo "Creating instance $instance"
+render=("s/INSTANCE/$instance/g")
+if [ -n "$persistent" ]; then
+  render+=('/# ephemeral$/d' 's/^#persistent //')
 fi
+sed "${render[@]/#/-e}" "$MANIFESTS" | kubectl apply -f - >/dev/null
+until kubectl -n "$NS" wait --for=condition=Ready "pod/$POD" --timeout=300s >/dev/null 2>&1; do
+  sleep 2
+done
 
-# Each member is renamed to its destination path in the pod.
-tar -cz \
+# Each member is renamed to its destination path in the pod. The pod prints
+# the session's short ID.
+short=$(tar -cz \
   --transform 's,^\.claude\.json$,run/claude/config/.claude.json.new,S' \
   --transform 's,^\.credentials\.json$,run/claude/config/.credentials.json.new,S' \
   --transform 's,^\.claude/,home/node/.claude/,S' \
   --transform "s,^$id,home/node/.beam/$id,S" \
   -C "$(dirname "$(readlink -f "$HOME/.claude.json")")" .claude.json \
   -C "$HOME/.claude" .credentials.json \
-  "${settings[@]}" \
-  -C "$snap" "${files[@]}" |
+  -C "$HOME" .claude/settings.json .claude/CLAUDE.md .claude/keybindings.json \
+  .claude/agents .claude/skills .claude/plugins \
+  "${snapped[@]}" |
   kubectl -n "$NS" exec -i "$POD" -c claude -- \
-    bash -c "$(cat "$BIN/beam-remote-copy.sh")" beam-remote-copy.sh "$id" "${COLORTERM:-}"
+    bash -c "$(cat "$BIN/beam-remote-copy.sh")" beam-remote-copy.sh "$mode" "$id" "${COLORTERM:-}")
 
-echo "Copied session $id to instance $instance and resumed it"
+echo "Started session $short in instance $instance"
 echo "Attach with: bin/beam-attach.sh $instance $short"

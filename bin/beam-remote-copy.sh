@@ -1,28 +1,33 @@
 #!/usr/bin/env bash
 # Runs in the remote pod, sent by beam-up.sh.
 #
-# Usage: beam-remote-copy.sh SESSION_ID [COLORTERM]
+# Usage: beam-remote-copy.sh new|resume SESSION_ID [COLORTERM]
+#
+# SESSION_ID is ignored with new.
 #
 # Reads a tar on stdin and extracts it at /. Its members carry their
 # destination paths:
 #   run/claude/config/.claude.json.new, .credentials.json.new: the login,
 #     on the memory volume only.
-#   home/node/.claude/...: the settings, on a new instance only.
-#   home/node/.beam/<id>.jsonl and <id>/: the transcript, staged on the PVC.
-# Installs the login with ~/work trusted, drops the hooks from the settings,
-# waits for Claude and its daemon, stops the background session with this
-# ID, installs the transcript, and resumes it as a background session.
+#   home/node/.claude/...: the settings.
+#   home/node/.beam/<id>.jsonl and <id>/: the transcript, staged on the home
+#     volume, resume only.
+# Installs the login with ~/work trusted, drops the hooks from the settings
+# and waits for Claude and its daemon. Then starts an empty background session
+# (new), or installs the transcript and resumes it as a background session
+# (resume). Writes the session's short ID to ~/.beam-session for
+# beam-attach.sh, and prints it.
 set -euo pipefail
 umask 077
 
-id=$1
-colorterm=${2:-}
+mode=$1
+id=$2
+colorterm=${3:-}
 CONFIG=/run/claude/config
 CLAUDE=/home/node/.local/bin/claude
 STAGE=/home/node/.beam
 PROJECT=/home/node/.claude/projects/-home-node-work
 
-rm -rf "$STAGE"
 tar -xz -C /
 
 node -e '
@@ -49,15 +54,18 @@ node -e '
 until [ -x "$CLAUDE" ]; do sleep 2; done
 until "$CLAUDE" daemon status >/dev/null 2>&1; do sleep 1; done
 
-"$CLAUDE" stop "${id:0:8}" >/dev/null 2>&1 || true
-# The stop returns before the session exits. A resume before then forks it.
-for _ in $(seq 50); do
-  grep -qs "\"${id:0:8}\": {" "$CONFIG/daemon/roster.json" || break
-  sleep 0.2
-done
-mkdir -p "$PROJECT"
-rm -rf "${PROJECT:?}/$id"
-mv "$STAGE"/* "$PROJECT/"
-rmdir "$STAGE"
 cd /home/node/work
-COLORTERM=$colorterm "$CLAUDE" --bg --resume "$id" >/dev/null
+if [ "$mode" = new ]; then
+  # --bg picks its own session ID: it ignores --session-id.
+  out=$(COLORTERM=$colorterm "$CLAUDE" --bg)
+  short=$(sed -n 's/^backgrounded · \([0-9a-f]\{8\}\).*/\1/p' <<<"$out")
+  [ -n "$short" ] || { echo "$out" >&2; exit 1; }
+else
+  mkdir -p "$PROJECT"
+  mv "$STAGE"/* "$PROJECT/"
+  rmdir "$STAGE"
+  COLORTERM=$colorterm "$CLAUDE" --bg --resume "$id" >/dev/null
+  short=${id:0:8}
+fi
+echo "$short" >/home/node/.beam-session
+echo "$short"

@@ -97,9 +97,9 @@ spec:
             - name: secrets
               mountPath: /run/claude
       volumes:
-        - name: home
-          emptyDir:
-            sizeLimit: 5Gi
+        - name: home # ephemeral
+          emptyDir: # ephemeral
+            sizeLimit: 5Gi # ephemeral
         - name: scripts
           configMap:
             name: claude-scripts
@@ -107,3 +107,12 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 64Mi
+#persistent   volumeClaimTemplates:
+#persistent     - metadata:
+#persistent         name: home
+#persistent       spec:
+#persistent         accessModes: ["ReadWriteOnce"]
+#persistent         storageClassName: gp3
+#persistent         resources:
+#persistent           requests:
+#persistent             storage: 20Gi
