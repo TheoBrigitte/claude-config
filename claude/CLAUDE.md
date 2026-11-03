@@ -161,3 +161,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Never wrap a URL in backticks, quotes, parentheses, brackets, or markdown link syntax.
 - Never put punctuation directly after a URL.
 - Apply this to pull requests, issues, commits, and files.
+
+## Github image uploads
+
+- Upload images to Github issue and pull request comments with the `gh --attach` flag.
+- Add alt text after `#`: `gh pr comment 13 --attach './login.png#The login error state'`.
+- Repeat the flag for each file: `gh issue comment 12 --attach ./before.png --attach ./after.png`.
+- Reference a file in the body as `![alt](./login.png)` to place it inline. `gh` rewrites the reference to the uploaded asset.
+- Never commit images to a repository to embed them in a comment.
