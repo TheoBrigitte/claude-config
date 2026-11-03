@@ -46,8 +46,13 @@ data:
     EOF
     fi
 
-    tmux new-session -d -x 200 -y 50 -s main -c "$HOME/work" 'claude; exec bash'
-    exec sleep infinity
+    # PID 1 supervises the tmux session and reaps orphaned processes.
+    set +e
+    while true; do
+      tmux has-session -t main 2>/dev/null || \
+        tmux new-session -d -x 200 -y 50 -s main -c "$HOME/work" 'claude; exec bash'
+      sleep 10 & wait
+    done
 ---
 apiVersion: apps/v1
 kind: StatefulSet
