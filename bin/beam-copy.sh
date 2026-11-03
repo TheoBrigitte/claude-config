@@ -49,7 +49,7 @@ tar -cz -C "$snap" "${files[@]}" |
   kubectl -n "$NS" exec -i "$POD" -c claude -- \
     sh -c "mkdir -p $REMOTE_PROJECT && tar -xz -C $REMOTE_PROJECT"
 
-pod sh -c "cd /home/node/work && $CLAUDE --bg --resume $id" >/dev/null
+pod sh -c "cd /home/node/work && COLORTERM=${COLORTERM:-} $CLAUDE --bg --resume $id" >/dev/null
 
 echo "Copied session $id to $POD and resumed it"
 echo "Attach with: bin/beam-attach.sh $short"

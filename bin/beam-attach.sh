@@ -12,7 +12,7 @@ POD=claude-0
 CLAUDE=/home/node/.local/bin/claude
 
 # Attach clients left behind by dropped connections.
-kubectl -n "$NS" exec "$POD" -c claude -- pkill -f "^$CLAUDE attach " || true
+kubectl -n "$NS" exec "$POD" -c claude -- pkill -f "^$CLAUDE attach " 2>/dev/null || true
 
 if [ -n "${1:-}" ]; then
   cmd=(attach "$1")
@@ -21,5 +21,5 @@ else
 fi
 
 kubectl -n "$NS" exec -it "$POD" -c claude -- \
-  env TERM="${TERM:-xterm-256color}" LANG=C.UTF-8 LC_ALL=C.UTF-8 \
+  env TERM="${TERM:-xterm-256color}" COLORTERM="${COLORTERM:-}" LANG=C.UTF-8 LC_ALL=C.UTF-8 \
   "$CLAUDE" "${cmd[@]}"
