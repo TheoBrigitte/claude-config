@@ -97,9 +97,12 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - Always create Github pull requests as drafts.
 - Always assign me (TheoBrigitte) as the pull request author.
-- Always write the pull request description in this format:
+- Always start the pull request description with a `Towards: <issue link>` line.
+- Use this format for the rest of the description as a suggestion. Adapt it when the PR calls for it:
 
 ```markdown
+Towards: https://github.com/giantswarm/roadmap/issues/123
+
 ### Problem
 
 <describe the problem this PR is solving and why it matters>
