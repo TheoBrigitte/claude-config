@@ -33,26 +33,14 @@ PROJECT=/home/node/.claude/projects/-home-node-work
 
 tar -xz -C /
 
-node -e '
-  const fs = require("fs");
-  const p = process.argv[1];
-  const c = JSON.parse(fs.readFileSync(p, "utf8"));
-  c.projects = c.projects || {};
-  c.projects["/home/node/work"] = { ...c.projects["/home/node/work"], hasTrustDialogAccepted: true };
-  fs.writeFileSync(p, JSON.stringify(c, null, 2) + "\n");
-' "$CONFIG/.claude.json.new"
+# Each temp file sits on its target's volume.
+f="$CONFIG/.claude.json.new"
+jq '.projects["/home/node/work"].hasTrustDialogAccepted = true' "$f" >"$f.tmp" && mv "$f.tmp" "$f"
 mv "$CONFIG/.claude.json.new" "$CONFIG/.claude.json"
 mv "$CONFIG/.credentials.json.new" "$CONFIG/.credentials.json"
 
-node -e '
-  const fs = require("fs");
-  const p = "/home/node/.claude/settings.json";
-  const s = JSON.parse(fs.readFileSync(p, "utf8"));
-  if (s.hooks) {
-    delete s.hooks;
-    fs.writeFileSync(p, JSON.stringify(s, null, 2) + "\n");
-  }
-'
+f=/home/node/.claude/settings.json
+jq 'del(.hooks)' "$f" >"$f.tmp" && mv "$f.tmp" "$f"
 
 until "$CLAUDE" daemon status >/dev/null 2>&1; do sleep 1; done
 
