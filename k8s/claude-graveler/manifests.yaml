@@ -20,12 +20,6 @@ data:
     export LC_ALL=C.UTF-8
     cd "$HOME"
     mkdir -p "$HOME/work" "$HOME/.claude"
-    export PATH="$HOME/.local/bin:$PATH"
-
-    # Claude Code native binary, persisted on the PVC
-    if ! command -v claude >/dev/null; then
-      curl -fsSL https://claude.ai/install.sh | bash
-    fi
 
     # CLAUDE_CONFIG_DIR is in memory: logins and tokens never reach the PVC.
     # Only these non-secret parts link to the PVC.
@@ -73,7 +67,11 @@ spec:
           type: RuntimeDefault
       containers:
         - name: claude
-          image: node:22-bookworm
+          # ttl.sh image of images/claude, expires 2026-11-04T22:25Z. Push a new one:
+          #   docker build -t beam-claude images/claude
+          #   docker tag beam-claude ttl.sh/$(cat /proc/sys/kernel/random/uuid):24h
+          #   docker push ttl.sh/<uuid>:24h
+          image: ttl.sh/0690ef65-ca0f-46da-8c79-24db7cfb4d85:24h
           command: ["/bin/bash", "/scripts/start.sh"]
           env:
             - name: CLAUDE_CONFIG_DIR

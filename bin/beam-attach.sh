@@ -19,7 +19,7 @@ fi
 # ~/.beam-session holds the short ID of the session beam-up.sh started.
 # shellcheck disable=SC2016
 kubectl -n "claude-theo-$instance" exec -it claude-0 -c claude -- sh -c '
-  pkill -f "^/home/node/.local/bin/claude attach "
+  pkill -f "^/usr/local/bin/claude attach "
   t=$1 c=$2
   shift 2
   if [ $# -eq 0 ]; then
@@ -30,5 +30,5 @@ kubectl -n "claude-theo-$instance" exec -it claude-0 -c claude -- sh -c '
     fi
   fi
   cd /home/node/work
-  exec env TERM="$t" COLORTERM="$c" LANG=C.UTF-8 LC_ALL=C.UTF-8 /home/node/.local/bin/claude "$@"
+  exec env TERM="$t" COLORTERM="$c" LANG=C.UTF-8 LC_ALL=C.UTF-8 /usr/local/bin/claude "$@"
 ' sh "${TERM:-xterm-256color}" "${COLORTERM:-}" "${cmd[@]}"

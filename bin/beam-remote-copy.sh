@@ -13,7 +13,7 @@
 #   home/node/.beam/<id>.jsonl and <id>/: the transcript, staged on the home
 #     volume, resume only.
 # Installs the login with ~/work trusted, drops the hooks from the settings
-# and waits for Claude and its daemon. Then starts an empty background session
+# and waits for the daemon. Then starts an empty background session
 # (new), or installs the transcript and resumes it as a background session
 # (resume). Writes the session's short ID to ~/.beam-session for
 # beam-attach.sh, and prints it.
@@ -24,7 +24,7 @@ mode=$1
 id=$2
 colorterm=${3:-}
 CONFIG=/run/claude/config
-CLAUDE=/home/node/.local/bin/claude
+CLAUDE=/usr/local/bin/claude
 STAGE=/home/node/.beam
 PROJECT=/home/node/.claude/projects/-home-node-work
 
@@ -51,7 +51,6 @@ node -e '
   }
 '
 
-until [ -x "$CLAUDE" ]; do sleep 2; done
 until "$CLAUDE" daemon status >/dev/null 2>&1; do sleep 1; done
 
 cd /home/node/work
