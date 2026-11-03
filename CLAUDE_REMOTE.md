@@ -11,8 +11,8 @@ Working on graveler, 2026-11-03.
 - `k8s/claude-graveler/manifests.yaml`: namespace `claude-theo`, ConfigMap `claude-scripts`, StatefulSet `claude`, 20Gi gp3 PVC at `/home/node`, 64Mi memory volume at `/run/claude`.
 - `bin/beam-start.sh`: applies the manifests and waits for the daemon. On first run it copies the settings to the PVC. When the pod's memory has no login, it pushes the login into memory.
 - `bin/beam-attach.sh [ID]`: attaches to a remote background session. Without ID it opens agent view.
-- `bin/beam-copy.sh`: copies a session transcript to the pod.
-- `bin/beam-copy-switch.sh`: copies a session, resumes it as a remote background session, and replaces the local tmux pane with the attach.
+- `bin/beam-copy.sh`: copies a session transcript to the pod and resumes it as a remote background session.
+- `bin/beam-copy-switch.sh`: runs `beam-copy.sh`, then replaces the local tmux pane with the attach.
 
 All scripts use the current kube context.
 
