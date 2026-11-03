@@ -35,9 +35,6 @@ data:
     done
     mkdir -p "$HOME/.claude/projects"
 
-    # beam-copy.sh pushes the login into memory.
-    until [ -f "$CLAUDE_CONFIG_DIR/.credentials.json" ]; do sleep 2; done
-
     # PID 1 supervises the daemon and reaps orphaned processes.
     set +e
     cd "$HOME/work"
@@ -89,6 +86,7 @@ spec:
             requests:
               cpu: 500m
               memory: 1Gi
+              ephemeral-storage: 1Gi
             limits:
               memory: 4Gi
           volumeMounts:
@@ -99,6 +97,9 @@ spec:
             - name: secrets
               mountPath: /run/claude
       volumes:
+        - name: home
+          emptyDir:
+            sizeLimit: 5Gi
         - name: scripts
           configMap:
             name: claude-scripts
@@ -106,12 +107,3 @@ spec:
           emptyDir:
             medium: Memory
             sizeLimit: 64Mi
-  volumeClaimTemplates:
-    - metadata:
-        name: home
-      spec:
-        accessModes: ["ReadWriteOnce"]
-        storageClassName: gp3
-        resources:
-          requests:
-            storage: 20Gi
