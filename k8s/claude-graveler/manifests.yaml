@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: claude-theo
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: claude-scripts
+  namespace: claude-theo
+data:
+  start.sh: |
+    #!/bin/bash
+    set -euo pipefail
+    export HOME=/home/node
+    export SHELL=/bin/bash
+    cd "$HOME"
+    mkdir -p "$HOME/work" "$HOME/bin"
+
+    # tmux from conda-forge, persisted on the PVC
+    export MAMBA_ROOT_PREFIX="$HOME/micromamba"
+    if [ ! -x "$HOME/bin/micromamba" ]; then
+      curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj -C "$HOME" bin/micromamba
+    fi
+    if [ ! -x "$MAMBA_ROOT_PREFIX/envs/tools/bin/tmux" ]; then
+      "$HOME/bin/micromamba" create -y -n tools -c conda-forge tmux
+    fi
+    export PATH="$MAMBA_ROOT_PREFIX/envs/tools/bin:$HOME/.local/bin:$HOME/bin:$PATH"
+
+    # Claude Code native binary, persisted on the PVC
+    if ! command -v claude >/dev/null; then
+      curl -fsSL https://claude.ai/install.sh | bash
+    fi
+
+    if [ ! -f "$HOME/.tmux.conf" ]; then
+      cat > "$HOME/.tmux.conf" <<'EOF'
+    set -g default-terminal "tmux-256color"
+    set -g prefix C-a
+    unbind C-b
+    bind C-a send-prefix
+    set -g history-limit 100000
+    set -g mouse on
+    EOF
+    fi
+
+    tmux new-session -d -s main -c "$HOME/work" 'claude; exec bash'
+    exec sleep infinity
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: claude
+  namespace: claude-theo
+spec:
+  serviceName: claude
+  replicas: 1
+  selector:
+    matchLabels:
+      app: claude
+  template:
+    metadata:
+      labels:
+        app: claude
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: claude
+          image: node:22-bookworm
+          command: ["/bin/bash", "/scripts/start.sh"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: anthropic
+                  key: ANTHROPIC_API_KEY
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              memory: 4Gi
+          volumeMounts:
+            - name: home
+              mountPath: /home/node
+            - name: scripts
+              mountPath: /scripts
+      volumes:
+        - name: scripts
+          configMap:
+            name: claude-scripts
+  volumeClaimTemplates:
+    - metadata:
+        name: home
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: gp3
+        resources:
+          requests:
+            storage: 20Gi

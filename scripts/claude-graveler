@@ -1,0 +1,11 @@
+#!/bin/bash
+# Attach to the Claude Code tmux session running on graveler.
+# tmux prefix in the pod is Ctrl+A. Detach: Ctrl+A d.
+set -euo pipefail
+
+CTX=teleport.giantswarm.io-graveler
+NS=claude-theo
+POD=claude-0
+
+kubectl --context "$CTX" -n "$NS" exec -it "$POD" -c claude -- \
+  /home/node/micromamba/envs/tools/bin/tmux attach -t main
