@@ -67,10 +67,9 @@ spec:
           type: RuntimeDefault
       containers:
         - name: claude
-          # ttl.sh image of images/claude, expires 2026-11-04T22:46Z. Push a new one:
-          #   img=ttl.sh/$(cat /proc/sys/kernel/random/uuid):24h
-          #   docker build -t "$img" images/claude && docker push "$img"
-          image: ttl.sh/0690ef65-ca0f-46da-8c79-24db7cfb4d85:24h
+          # Built from images/claude. Tag = Claude version. Rebuild and push:
+          #   docker build -t docker.io/theo01/beam-claude:<version> images/claude && docker push docker.io/theo01/beam-claude:<version>
+          image: docker.io/theo01/beam-claude:2.1.317
           command: ["/bin/bash", "/scripts/start.sh"]
           env:
             - name: CLAUDE_CONFIG_DIR
