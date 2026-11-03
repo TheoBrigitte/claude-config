@@ -120,6 +120,12 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Open the Solution and Validation sections with a high-level summary.
 - Keep the Solution and Validation to a few sentences or a short list of high-level points.
 - When asked to reword a PR body, reword it and add a high-level explanation summary to the Solution and Validation sections.
+- Add an architecture diagram to the Solution section when the PR changes how components interact, how data flows, or how the system is deployed.
+- Skip the diagram for local changes: bug fixes, refactors, dependency bumps, docs.
+- Draw the diagram as a Mermaid code block. Github renders it inline.
+- Show the architecture after the change. Highlight the added or changed components and edges.
+- Add a before diagram only when the change replaces an existing flow.
+- Keep the diagram small: only the components the PR touches and their direct neighbours.
 
 ## Changelog
 
