@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Set up the remote Claude Code pod on graveler.
+# Set up the remote Claude Code pod in the current kube context.
 #
 # Usage: beam-start.sh
 #
@@ -9,21 +9,20 @@
 #   3. On first run only, copy the local Claude login and settings into the
 #      pod, drop the hooks, trust ~/work, and restart Claude to load them.
 #
-# Attach with scripts/claude-graveler.
+# Attach with bin/beam-attach.sh.
 
 set -euo pipefail
 
-CTX=teleport.giantswarm.io-graveler
 NS=claude-theo
 POD=claude-0
 TMUX=/home/node/micromamba/envs/tools/bin/tmux
 MANIFESTS="$(dirname "$(readlink -f "$0")")/../k8s/claude-graveler/manifests.yaml"
 
-k() { kubectl --context "$CTX" -n "$NS" "$@"; }
+k() { kubectl -n "$NS" "$@"; }
 pod() { k exec "$POD" -c claude -- "$@"; }
 
 echo "Applying manifests"
-kubectl --context "$CTX" apply -f "$MANIFESTS"
+kubectl apply -f "$MANIFESTS"
 
 echo "Waiting for the tmux session"
 until pod "$TMUX" has-session -t main 2>/dev/null; do sleep 5; done
