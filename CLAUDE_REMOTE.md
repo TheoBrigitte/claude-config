@@ -23,12 +23,11 @@ All scripts use the current kube context.
 - PID 1 then supervises the tmux session `main`. It recreates the session if it dies and reaps orphaned processes.
 - tmux prefix: `Ctrl+A`. Detach: `Ctrl+A d`.
 - Claude runs in `/home/node/work`. Its project folder is `-home-node-work`.
-- Auth: the copied claude.ai login in `.credentials.json`. Remote Control (`/rc`) works.
+- Auth: the copied claude.ai login in `.credentials.json`, on the PVC. Remote Control (`/rc`) works. This breaks the secrets requirement in item 6.
 - Settings: copied from the laptop. `beam-start.sh` removes the hooks.
 
 ### Known issues
 
-- **`claude-theo` disappeared twice.** The namespace, PVC and credentials were deleted with no command from this session. graveler's `cluster-cleaner` only handles Cluster objects. No Kyverno cleanup policy exists. Cause unknown.
 - **Paths differ.** Transcripts refer to `/home/theo/...`. The pod uses `/home/node/work`.
 - **Tools are missing.** The pod has bash, git, node, curl, tmux and Claude. It has no jq, go, gh, kubectl or `claude-statusline`.
 - **MCP servers don't connect.** Their configs and env secrets stay on the laptop.
@@ -102,63 +101,63 @@ To test: when Claude runs the switch through its Bash tool, the switch kills tha
 Add `beam-stop.sh`:
 
 - `--pause`: scale the StatefulSet to 0. The PVC stays. `beam-start.sh` resumes.
-- Default: delete the namespace. The gp3 reclaim policy is Delete, so the PVC and its credentials go with it.
+- Default: delete the namespace. The gp3 reclaim policy is Delete, so the PVC goes with it.
 - Before deleting, offer a beam down of the running session.
 - After deleting, verify that the PV is gone.
 
 ### 6. Secrets
 
-#### Current state
+#### Requirement
 
-- `.credentials.json` sits in plain text on the PVC. It holds the claude.ai OAuth token and 12 MCP OAuth entries:
-  - github
-  - grafana
-  - incident.io
-  - muster_remote
-  - observability-platform
-  - slack
-- The gp3 volume is encrypted at rest (`encrypted: true`).
-- The MCP configs reference env vars such as `${...}` for GitHub, Grafana, PagerDuty, context7, jina and n8n. The pod has none of them.
-- The namespace has no NetworkPolicy and no RoleBinding. Egress is open.
-- The pod's Claude runs in auto mode with open egress. A prompt injection could exfiltrate every token in the pod.
+Secrets and logins never touch a PVC. That covers:
 
-#### Who can read the secrets today
+- the claude.ai login;
+- MCP OAuth tokens;
+- MCP env secrets: GitHub, Grafana, PagerDuty, context7, jina, n8n;
+- any other token.
 
-graveler's cluster-admin subjects can exec into the pod or read the volume:
+They live in pod memory only. They also stay out of Kubernetes Secrets: those persist in etcd.
 
-- `customer:giantswarm:Employees`
-- `giantswarm-admins`
-- `system:masters`
-- Several service accounts.
+#### Design
 
-Root on the node can read them as well. On a shared management cluster, no Kubernetes control hides them from cluster admins. Making them invisible to everyone else requires infrastructure that only you administer.
+- **Memory volume.** Mount an `emptyDir` with `medium: Memory` at `/run/claude`. It is tmpfs and disappears with the pod.
+- **Config dir in memory.** Set `CLAUDE_CONFIG_DIR=/run/claude/config`. Claude then writes `.credentials.json` into tmpfs, including atomic rewrites on token refresh.
+- **Persistent parts by symlink.** In the tmpfs config dir, symlink these to the PVC:
+  - `projects/`
+  - `todos/`
+  - `settings.json`
+  - `CLAUDE.md`
+  - `agents/`
+  - `skills/`
+  - `plugins/`
 
-#### Options
+  Session history survives a restart. Credentials don't.
+- **Push at start.** `beam-start.sh` streams the credentials and an env file over `kubectl exec` stdin, straight into `/run/claude`. Nothing is written on the laptop or in the pod outside tmpfs.
+- **Env secrets from 1Password.** `beam-start.sh` runs `op inject` locally with `op://` refs. The tmux session sources `/run/claude/env`.
+- **Wait for secrets.** The PID 1 supervisor starts Claude only after `/run/claude/config/.credentials.json` exists.
+- **Restart.** A pod restart wipes tmpfs, and Claude waits until the next `beam-start.sh` push.
+
+#### To verify
+
+- Claude writes no secret outside `CLAUDE_CONFIG_DIR`. Check `.claude.json` (it moves into the config dir with `CLAUDE_CONFIG_DIR`), `~/.cache` and `~/.config`.
+- MCP servers write no tokens to the PVC. Check `npx` and `uvx` caches, `~/.config/gh` and `~/.kube`. Point their config dirs at tmpfs.
+- Transcripts stay clean. Tool output can contain tokens, and transcripts live on the PVC. Keep secrets out of commands and outputs, and check for a redaction option.
+- The nodes have no swap. tmpfs pages could otherwise reach disk.
+- The tmpfs size limit covers the files: set `sizeLimit` on the `emptyDir`.
+
+#### Further hardening
 
 | Control | Effect |
 |---|---|
-| Dedicated cluster or VM that only you administer | Removes other admins from the trust boundary. The only full answer to "no one else can see". |
-| Secrets in memory only: `emptyDir` with `medium: Memory`, pushed from the laptop at each start | Nothing on disk or in snapshots. A pod restart needs a new push. |
-| Scoped, short-lived tokens per remote session: fine-grained GitHub PAT, read-only Grafana token | Limits the impact of a leak. |
-| 1Password: `op inject` of `op://` refs, a service account scoped to one vault | One secret to bootstrap. That token is the new crown jewel. |
-| Egress NetworkPolicy allowlist: Anthropic, GitHub, Slack and the MCP hosts | Blocks exfiltration to arbitrary hosts. |
-| Kyverno policy: exec into `claude-theo` only for your identity | Stops casual access. Cluster admins can still bypass it. |
-| Alert on exec and secret reads in `claude-theo`, from audit logs | Detects access instead of preventing it. |
+| Separate logins in the pod: `/login`, `/mcp` auth | No refresh token shared with the laptop. A refresh on one side can't log the other out. |
+| Scoped, short-lived tokens per remote session | Limits the impact of a leak. |
+| Egress NetworkPolicy allowlist: Anthropic, GitHub, Slack, the MCP hosts | Blocks exfiltration to arbitrary hosts. |
+| Kyverno policy: exec into the namespace only for your identity | Stops casual access. Cluster admins can still bypass it. |
+| A cluster or VM that only you administer | Cluster admins and node root can read pod memory. This removes them. |
 
-#### OAuth refresh tokens
+#### Current gap
 
-The laptop and the pod share copies of the same OAuth refresh tokens: claude.ai and the MCP servers. If a provider rotates refresh tokens, the first side to refresh invalidates the other. One of them then gets logged out. Options:
-
-- Log in separately in the pod: `/login` and `/mcp` auth. Each side then has its own tokens.
-- Treat the tokens as moving with the session.
-
-#### Proposal
-
-1. Log in separately in the pod. Copy no OAuth tokens.
-2. Put env secrets in a memory-backed volume. Push them at `beam-start` from 1Password.
-3. Add the egress allowlist.
-4. Add `beam-stop` to wipe everything.
-5. Long term: run on a cluster that only you administer.
+`beam-start.sh` copies `.credentials.json` onto the PVC. It holds the claude.ai login and 12 MCP OAuth entries. The design above replaces that copy.
 
 ### 7. Beam down
 
