@@ -16,7 +16,7 @@ FROM claude-${TARGETARCH} AS claude
 
 FROM alpine:3.24
 
-RUN apk add --no-cache bash ca-certificates coreutils gzip libgcc libstdc++ nodejs procps-ng tar \
+RUN apk add --no-cache bash ca-certificates coreutils diffutils findutils gawk grep gzip jq libgcc libstdc++ procps-ng sed tar which \
  && addgroup -g 1000 node \
  && adduser -D -u 1000 -G node -h /home/node -s /bin/bash node
 
