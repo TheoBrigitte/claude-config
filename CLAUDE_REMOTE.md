@@ -8,24 +8,24 @@ Working on graveler, 2026-11-03.
 
 ### Pieces
 
-- An instance is a namespace `claude-theo-<instance>` with one pod, `claude-0`. The namespace has the label `beam.giantswarm.io/instance=<instance>`. Instances are disposable: each has its own PVC and login.
-- `k8s/claude-graveler/manifests.yaml`: namespace, ConfigMap `claude-scripts`, StatefulSet `claude`, 20Gi gp3 PVC at `/home/node`, 64Mi memory volume at `/run/claude`. `INSTANCE` is the placeholder for the instance name.
+- An instance is a namespace `claude-theo-<instance>` with one pod, `claude-0`. The namespace has the label `beam.giantswarm.io/instance=<instance>`. Instances are disposable: each has its own home volume and login.
+- `k8s/claude-graveler/manifests.yaml`: namespace, ConfigMap `claude-scripts`, StatefulSet `claude`, 5Gi `emptyDir` home volume at `/home/node` on the node's disk, 64Mi memory volume at `/run/claude`. `INSTANCE` is the placeholder for the instance name.
 - `bin/beam-copy.sh [-n INSTANCE] [SESSION_ID]`: copies a session transcript to an instance and resumes it as a remote background session. The instance defaults to the session's short ID. A missing instance is created, with the local settings. An existing instance gets the session copied again. Every run pushes the current local login and `.claude.json` into the pod's memory.
 - `bin/beam-attach.sh INSTANCE [ID]`: attaches to a remote background session. Without ID it opens the session named by the instance, or agent view when the instance name is not a short ID.
 - `bin/beam-copy-switch.sh [-n INSTANCE] [SESSION_ID]`: runs `beam-copy.sh`, then replaces the local tmux pane with the attach.
 - `bin/beam-list.sh`: lists the instances and their pods.
-- `bin/beam-destroy.sh INSTANCE`: deletes the instance namespace, with its pod, PVC and login.
-- `bin/beam-remote-copy.sh`: runs in the pod. `beam-copy.sh` sends its content with `kubectl exec ... bash -c`, in one exec. Data goes over stdin as one tar stream. Each member carries its destination path: the login goes to `/run/claude/config`, the settings and transcript to the PVC.
+- `bin/beam-destroy.sh INSTANCE`: deletes the instance namespace, with its pod, home volume and login.
+- `bin/beam-remote-copy.sh`: runs in the pod. `beam-copy.sh` sends its content with `kubectl exec ... bash -c`, in one exec. Data goes over stdin as one tar stream. Each member carries its destination path: the login goes to `/run/claude/config`, the settings and transcript to the home volume.
 
 All scripts use the current kube context.
 
 ### Pod
 
 - Image `node:22-bookworm`, user 1000, restricted pod security. graveler's Kyverno enforces it.
-- PID 1 runs `start.sh` from the ConfigMap. It installs Claude Code onto the PVC once.
+- PID 1 runs `start.sh` from the ConfigMap. It installs Claude Code onto the home volume.
 - `CLAUDE_CONFIG_DIR=/run/claude/config`, on the memory volume. It holds `.credentials.json`, `.claude.json` and the daemon state.
-- Symlinks in the config dir point to the PVC: `projects`, `settings.json`, `CLAUDE.md`, `keybindings.json`, `agents`, `skills`, `plugins`.
-- PID 1 waits for `.credentials.json`, then supervises `claude daemon run` and reaps orphaned processes.
+- Symlinks in the config dir point to the home volume: `projects`, `settings.json`, `CLAUDE.md`, `keybindings.json`, `agents`, `skills`, `plugins`.
+- PID 1 supervises `claude daemon run` and reaps orphaned processes. The daemon starts without a login and finds it when `beam-copy.sh` pushes it.
 - Sessions are Claude background sessions: `claude --bg --resume <id>` starts one, `claude attach <id>` opens it. The short ID is the first 8 characters of the session ID.
 - Detach: Ctrl+Z. ← opens agent view. A dropped connection leaves the session running.
 - Claude runs in `/home/node/work`. Its project folder is `-home-node-work`.
@@ -42,13 +42,26 @@ All scripts use the current kube context.
 - **Stale attach clients.** A dropped connection leaves a `claude attach` process in the pod until the kubelet idle timeout. `beam-attach.sh` kills them before attaching.
 - **Shared login refresh.** The pod's daemon refreshes the OAuth token on its own schedule. If a refresh replaces the refresh token, the laptop's copy may stop working until the next push or a local `/login`.
 
+### Timings
+
+Measured on graveler, 2026-11-03:
+
+| Step | Time |
+|---|---|
+| Cold `beam-copy.sh` (new instance) | 20 s, of which ~9-17 s is the Claude download |
+| Warm `beam-copy.sh` (existing instance) | 3.7 s |
+| `beam-attach.sh` to the prompt | 1.0-1.4 s |
+| `beam-destroy.sh` | returns at once, namespace gone within a minute |
+
+An `emptyDir` home volume is ready in ~1.7 s. A fresh gp3 PVC took 8.7-12.9 s.
+
 ## Next
 
 ### 1. Paths
 
 Mirror the laptop layout in the pod:
 
-- Run the pod with `HOME=/home/theo` and the PVC mounted there.
+- Run the pod with `HOME=/home/theo` and the home volume mounted there.
 - Put working directories at their laptop paths, for example `/home/theo/projects/claude`.
 - The project folder then matches: `-home-theo-projects-claude`. `beam-copy.sh` no longer rewrites it.
 - Paths in transcripts, CLAUDE.md, settings and hooks resolve unchanged.
@@ -92,7 +105,17 @@ Build an image to replace the install-at-boot setup:
 
 Build in CI and push to `gsoci.azurecr.io` or `gsociprivate.azurecr.io`. Pin the tag in the StatefulSet.
 
-The PVC keeps `$HOME` only. Tools live in the image.
+Existing images, checked on 2026-11-03:
+
+| Image | Claude | Gap |
+|---|---|---|
+| `gsoci.azurecr.io/giantswarm/kagent/claude-harness:1.30.0` | 2.1.303 | Alpine, root, no node, ships a kagent CLAUDE.md |
+| `gsoci.azurecr.io/giantswarm/klaus:1.0.37` | 2.1.311 | No curl, git, jq or gh |
+| `gsoci.azurecr.io/giantswarm/claude-code-ci` | 2.1.36 | Too old for `claude daemon` |
+
+None fits. Build a new image in https://github.com/giantswarm/custom-container-images, using `claude-code-ci` as the template. graveler's `restrict-image-registries` policy runs in Audit mode and allows `gsoci.azurecr.io/giantswarm/*`.
+
+The home volume keeps `$HOME` only. Tools live in the image.
 
 ### 4. Skill
 
@@ -108,8 +131,7 @@ To test: when Claude runs the switch through its Bash tool, the switch kills tha
 
 Add `beam-stop.sh`:
 
-- `--pause`: scale the StatefulSet to 0. The PVC stays. `beam-copy.sh` resumes.
-- Default: delete the namespace, as `beam-destroy.sh` does. The gp3 reclaim policy is Delete, so the PVC goes with it.
+- Delete the namespace, as `beam-destroy.sh` does. The home volume and the login go with the pod.
 - Before deleting, offer a beam down of the running session.
 - After deleting, verify that the PV is gone.
 
@@ -117,7 +139,7 @@ Add `beam-stop.sh`:
 
 #### Requirement
 
-Secrets and logins never touch a PVC. That covers:
+Secrets and logins never touch disk. That covers:
 
 - the claude.ai login;
 - MCP OAuth tokens;
@@ -130,7 +152,7 @@ They live in pod memory only. They also stay out of Kubernetes Secrets: those pe
 
 - **Memory volume.** Mount an `emptyDir` with `medium: Memory` at `/run/claude`. It is tmpfs and disappears with the pod.
 - **Config dir in memory.** Set `CLAUDE_CONFIG_DIR=/run/claude/config`. Claude then writes `.credentials.json` into tmpfs, including atomic rewrites on token refresh.
-- **Persistent parts by symlink.** In the tmpfs config dir, symlink these to the PVC:
+- **Non-secret parts by symlink.** In the tmpfs config dir, symlink these to the home volume:
   - `projects/`
   - `todos/`
   - `settings.json`
@@ -148,8 +170,8 @@ They live in pod memory only. They also stay out of Kubernetes Secrets: those pe
 #### To verify
 
 - Claude writes no secret outside `CLAUDE_CONFIG_DIR`. Check `.claude.json` (it moves into the config dir with `CLAUDE_CONFIG_DIR`), `~/.cache` and `~/.config`.
-- MCP servers write no tokens to the PVC. Check `npx` and `uvx` caches, `~/.config/gh` and `~/.kube`. Point their config dirs at tmpfs.
-- Transcripts stay clean. Tool output can contain tokens, and transcripts live on the PVC. Keep secrets out of commands and outputs, and check for a redaction option.
+- MCP servers write no tokens to disk. Check `npx` and `uvx` caches, `~/.config/gh` and `~/.kube`. Point their config dirs at tmpfs.
+- Transcripts stay clean. Tool output can contain tokens, and transcripts live on the home volume. Keep secrets out of commands and outputs, and check for a redaction option.
 - The nodes have no swap. tmpfs pages could otherwise reach disk.
 - The tmpfs size limit covers the files: set `sizeLimit` on the `emptyDir`.
 
@@ -164,7 +186,7 @@ They live in pod memory only. They also stay out of Kubernetes Secrets: those pe
 
 #### Done
 
-- Memory volume, config dir in memory, symlinks to the PVC, push at start, wait for secrets.
+- Memory volume, config dir in memory, symlinks to the home volume, push at copy.
 - Verified: `.credentials.json` and `.claude.json` exist only on tmpfs. `find /home/node` finds neither.
 
 #### Open
