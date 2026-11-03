@@ -1,13 +1,15 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: claude-theo
+  name: claude-theo-INSTANCE
+  labels:
+    beam.giantswarm.io/instance: INSTANCE
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: claude-scripts
-  namespace: claude-theo
+  namespace: claude-theo-INSTANCE
 data:
   start.sh: |
     #!/bin/bash
@@ -33,7 +35,7 @@ data:
     done
     mkdir -p "$HOME/.claude/projects"
 
-    # beam-start.sh pushes the login into memory.
+    # beam-copy.sh pushes the login into memory.
     until [ -f "$CLAUDE_CONFIG_DIR/.credentials.json" ]; do sleep 2; done
 
     # PID 1 supervises the daemon and reaps orphaned processes.
@@ -52,7 +54,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: claude
-  namespace: claude-theo
+  namespace: claude-theo-INSTANCE
 spec:
   serviceName: claude
   replicas: 1
@@ -63,6 +65,7 @@ spec:
     metadata:
       labels:
         app: claude
+        beam.giantswarm.io/instance: INSTANCE
     spec:
       securityContext:
         runAsNonRoot: true
