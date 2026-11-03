@@ -13,6 +13,7 @@ Working on graveler, 2026-11-03.
 - `bin/beam-attach.sh [ID]`: attaches to a remote background session. Without ID it opens agent view.
 - `bin/beam-copy.sh`: runs `beam-start.sh`, copies a session transcript to the pod, and resumes it as a remote background session.
 - `bin/beam-copy-switch.sh`: runs `beam-copy.sh`, then replaces the local tmux pane with the attach.
+- `bin/beam-remote-login.sh`, `bin/beam-remote-settings.sh`, `bin/beam-remote-resume.sh`: run in the pod. The local scripts send their content with `kubectl exec ... bash -c`, one exec per script. Data goes over stdin as a tar stream.
 
 All scripts use the current kube context.
 
@@ -38,7 +39,6 @@ All scripts use the current kube context.
 - **Claude is pinned.** `DISABLE_AUTOUPDATER=1` from the settings pins v2.1.317. Upgrade with `claude update` in the pod.
 - **Stale attach clients.** A dropped connection leaves a `claude attach` process in the pod until the kubelet idle timeout. `beam-attach.sh` kills them before attaching.
 - **Shared login refresh.** The pod's daemon refreshes the OAuth token on its own schedule. If a refresh replaces the refresh token, the laptop's copy may stop working until the next push or a local `/login`.
-- **Copies are slow.** `beam-copy.sh` takes about 45 seconds, mostly `kubectl exec` round trips through Teleport.
 
 ## Next
 

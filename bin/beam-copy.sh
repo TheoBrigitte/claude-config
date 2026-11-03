@@ -8,15 +8,14 @@
 # `! bin/beam-copy.sh` inside Claude Code. The local session keeps running.
 # The remote copy is a fork from this point on.
 #
-# Runs beam-start.sh, so the pod has the current local login. Stops the
-# remote background session with this ID, if one runs, copies the
-# transcript, and resumes it as a remote background session.
+# Runs beam-start.sh, so the pod has the current local login. Then runs
+# beam-remote-resume.sh in the pod: it stops the remote background session
+# with this ID, if one runs, installs the transcript, and resumes it as a
+# remote background session.
 set -euo pipefail
 
 NS=claude-theo
 POD=claude-0
-CLAUDE=/home/node/.local/bin/claude
-REMOTE_PROJECT=/home/node/.claude/projects/-home-node-work
 BIN="$(dirname "$(readlink -f "$0")")"
 
 id="${1:-${CLAUDE_CODE_SESSION_ID:-}}"
@@ -43,17 +42,11 @@ if [ -d "$dir/$id" ]; then
   files+=("$id")
 fi
 
-pod() { kubectl -n "$NS" exec "$POD" -c claude -- "$@"; }
-
 "$BIN/beam-start.sh" >/dev/null
-
-pod "$CLAUDE" stop "$short" >/dev/null 2>&1 || true
 
 tar -cz -C "$snap" "${files[@]}" |
   kubectl -n "$NS" exec -i "$POD" -c claude -- \
-    sh -c "mkdir -p $REMOTE_PROJECT && tar -xz -C $REMOTE_PROJECT"
-
-pod sh -c "cd /home/node/work && COLORTERM=${COLORTERM:-} $CLAUDE --bg --resume $id" >/dev/null
+    bash -c "$(cat "$BIN/beam-remote-resume.sh")" beam-remote-resume.sh "$id" "${COLORTERM:-}"
 
 echo "Copied session $id to $POD and resumed it"
 echo "Attach with: bin/beam-attach.sh $short"
