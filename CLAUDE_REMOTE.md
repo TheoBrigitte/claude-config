@@ -8,12 +8,14 @@ Working on graveler, 2026-11-03.
 
 ### Pieces
 
-- `k8s/claude-graveler/manifests.yaml`: namespace `claude-theo`, ConfigMap `claude-scripts`, StatefulSet `claude`, 20Gi gp3 PVC at `/home/node`, 64Mi memory volume at `/run/claude`.
-- `bin/beam-start.sh`: applies the manifests and waits for the daemon. On first run it copies the settings to the PVC. On every run it pushes the current local login and `.claude.json` into the pod's memory.
-- `bin/beam-attach.sh [ID]`: attaches to a remote background session. Without ID it opens agent view.
-- `bin/beam-copy.sh`: runs `beam-start.sh`, copies a session transcript to the pod, and resumes it as a remote background session.
-- `bin/beam-copy-switch.sh`: runs `beam-copy.sh`, then replaces the local tmux pane with the attach.
-- `bin/beam-remote-login.sh`, `bin/beam-remote-settings.sh`, `bin/beam-remote-resume.sh`: run in the pod. The local scripts send their content with `kubectl exec ... bash -c`, one exec per script. Data goes over stdin as a tar stream.
+- An instance is a namespace `claude-theo-<instance>` with one pod, `claude-0`. The namespace has the label `beam.giantswarm.io/instance=<instance>`. Instances are disposable: each has its own PVC and login.
+- `k8s/claude-graveler/manifests.yaml`: namespace, ConfigMap `claude-scripts`, StatefulSet `claude`, 20Gi gp3 PVC at `/home/node`, 64Mi memory volume at `/run/claude`. `INSTANCE` is the placeholder for the instance name.
+- `bin/beam-copy.sh [-n INSTANCE] [SESSION_ID]`: copies a session transcript to an instance and resumes it as a remote background session. The instance defaults to the session's short ID. A missing instance is created, with the local settings. An existing instance gets the session copied again. Every run pushes the current local login and `.claude.json` into the pod's memory.
+- `bin/beam-attach.sh INSTANCE [ID]`: attaches to a remote background session. Without ID it opens the session named by the instance, or agent view when the instance name is not a short ID.
+- `bin/beam-copy-switch.sh [-n INSTANCE] [SESSION_ID]`: runs `beam-copy.sh`, then replaces the local tmux pane with the attach.
+- `bin/beam-list.sh`: lists the instances and their pods.
+- `bin/beam-destroy.sh INSTANCE`: deletes the instance namespace, with its pod, PVC and login.
+- `bin/beam-remote-copy.sh`: runs in the pod. `beam-copy.sh` sends its content with `kubectl exec ... bash -c`, in one exec. Data goes over stdin as one tar stream. Each member carries its destination path: the login goes to `/run/claude/config`, the settings and transcript to the PVC.
 
 All scripts use the current kube context.
 
@@ -27,9 +29,9 @@ All scripts use the current kube context.
 - Sessions are Claude background sessions: `claude --bg --resume <id>` starts one, `claude attach <id>` opens it. The short ID is the first 8 characters of the session ID.
 - Detach: Ctrl+Z. ← opens agent view. A dropped connection leaves the session running.
 - Claude runs in `/home/node/work`. Its project folder is `-home-node-work`.
-- Auth: the laptop's claude.ai login, shared with the pod and held in memory. Every `beam-start.sh` and `beam-copy.sh` pushes the current copy. Remote Control (`/rc`) works.
-- Settings: copied from the laptop. `beam-start.sh` removes the hooks.
-- A pod restart wipes the memory volume. Rerun `beam-start.sh` to push the login again.
+- Auth: the laptop's claude.ai login, shared with the pod and held in memory. Every `beam-copy.sh` pushes the current copy. Remote Control (`/rc`) works.
+- Settings: copied from the laptop when the instance is created. `beam-copy.sh` removes the hooks.
+- A pod restart wipes the memory volume. Rerun `beam-copy.sh` to push the login again.
 
 ### Known issues
 
@@ -106,8 +108,8 @@ To test: when Claude runs the switch through its Bash tool, the switch kills tha
 
 Add `beam-stop.sh`:
 
-- `--pause`: scale the StatefulSet to 0. The PVC stays. `beam-start.sh` resumes.
-- Default: delete the namespace. The gp3 reclaim policy is Delete, so the PVC goes with it.
+- `--pause`: scale the StatefulSet to 0. The PVC stays. `beam-copy.sh` resumes.
+- Default: delete the namespace, as `beam-destroy.sh` does. The gp3 reclaim policy is Delete, so the PVC goes with it.
 - Before deleting, offer a beam down of the running session.
 - After deleting, verify that the PV is gone.
 
@@ -138,10 +140,10 @@ They live in pod memory only. They also stay out of Kubernetes Secrets: those pe
   - `plugins/`
 
   Session history survives a restart. Credentials don't.
-- **Push at start.** `beam-start.sh` streams the credentials and an env file over `kubectl exec` stdin, straight into `/run/claude`. Nothing is written on the laptop or in the pod outside tmpfs.
-- **Env secrets from 1Password.** `beam-start.sh` runs `op inject` locally with `op://` refs. The daemon sources `/run/claude/env` before it starts.
+- **Push at start.** `beam-copy.sh` streams the credentials and an env file over `kubectl exec` stdin, straight into `/run/claude`. Nothing is written on the laptop or in the pod outside tmpfs.
+- **Env secrets from 1Password.** `beam-copy.sh` runs `op inject` locally with `op://` refs. The daemon sources `/run/claude/env` before it starts.
 - **Wait for secrets.** The PID 1 supervisor starts Claude only after `/run/claude/config/.credentials.json` exists.
-- **Restart.** A pod restart wipes tmpfs, and Claude waits until the next `beam-start.sh` push.
+- **Restart.** A pod restart wipes tmpfs, and Claude waits until the next `beam-copy.sh` push.
 
 #### To verify
 
