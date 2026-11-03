@@ -8,31 +8,37 @@ Working on graveler, 2026-11-03.
 
 ### Pieces
 
-- `k8s/claude-graveler/manifests.yaml`: namespace `claude-theo`, ConfigMap `claude-scripts`, StatefulSet `claude`, 20Gi gp3 PVC at `/home/node`.
-- `bin/beam-start.sh`: applies the manifests and waits for the tmux session. On first run it copies the local login and settings into the pod.
-- `bin/beam-attach.sh`: attaches to the pod's tmux session.
+- `k8s/claude-graveler/manifests.yaml`: namespace `claude-theo`, ConfigMap `claude-scripts`, StatefulSet `claude`, 20Gi gp3 PVC at `/home/node`, 64Mi memory volume at `/run/claude`.
+- `bin/beam-start.sh`: applies the manifests and waits for the daemon. On first run it copies the settings to the PVC. When the pod's memory has no login, it pushes the login into memory.
+- `bin/beam-attach.sh [ID]`: attaches to a remote background session. Without ID it opens agent view.
 - `bin/beam-copy.sh`: copies a session transcript to the pod.
-- `bin/beam-copy-switch.sh`: copies a session, resumes it in the pod, and replaces the local tmux pane with the attach.
+- `bin/beam-copy-switch.sh`: copies a session, resumes it as a remote background session, and replaces the local tmux pane with the attach.
 
 All scripts use the current kube context.
 
 ### Pod
 
 - Image `node:22-bookworm`, user 1000, restricted pod security. graveler's Kyverno enforces it.
-- PID 1 runs `start.sh` from the ConfigMap. It installs micromamba, tmux and Claude Code onto the PVC once.
-- PID 1 then supervises the tmux session `main`. It recreates the session if it dies and reaps orphaned processes.
-- tmux prefix: `Ctrl+A`. Detach: `Ctrl+A d`.
+- PID 1 runs `start.sh` from the ConfigMap. It installs Claude Code onto the PVC once.
+- `CLAUDE_CONFIG_DIR=/run/claude/config`, on the memory volume. It holds `.credentials.json`, `.claude.json` and the daemon state.
+- Symlinks in the config dir point to the PVC: `projects`, `settings.json`, `CLAUDE.md`, `keybindings.json`, `agents`, `skills`, `plugins`.
+- PID 1 waits for `.credentials.json`, then supervises `claude daemon run` and reaps orphaned processes.
+- Sessions are Claude background sessions: `claude --bg --resume <id>` starts one, `claude attach <id>` opens it. The short ID is the first 8 characters of the session ID.
+- Detach: Ctrl+Z. ← opens agent view. A dropped connection leaves the session running.
 - Claude runs in `/home/node/work`. Its project folder is `-home-node-work`.
-- Auth: the copied claude.ai login in `.credentials.json`, on the PVC. Remote Control (`/rc`) works. This breaks the secrets requirement in item 6.
+- Auth: the laptop's claude.ai login, in memory. Remote Control (`/rc`) works.
 - Settings: copied from the laptop. `beam-start.sh` removes the hooks.
+- A pod restart wipes the memory volume. Rerun `beam-start.sh` to push the login again.
 
 ### Known issues
 
 - **Paths differ.** Transcripts refer to `/home/theo/...`. The pod uses `/home/node/work`.
-- **Tools are missing.** The pod has bash, git, node, curl, tmux and Claude. It has no jq, go, gh, kubectl or `claude-statusline`.
+- **Tools are missing.** The pod has bash, git, node, curl and Claude. It has no jq, go, gh, kubectl or `claude-statusline`.
 - **MCP servers don't connect.** Their configs and env secrets stay on the laptop.
 - **Claude is pinned.** `DISABLE_AUTOUPDATER=1` from the settings pins v2.1.317. Upgrade with `claude update` in the pod.
 - **Errors are unclear when the pod is missing.** `beam-copy.sh` prints `tar: Wrote only 4096 of 10240 bytes`. It should check for the namespace and pod first.
+- **Stale attach clients.** A dropped connection leaves a `claude attach` process in the pod until the kubelet idle timeout. `beam-attach.sh` kills them before attaching.
+- **The login is shared.** The pod uses copies of the laptop's OAuth tokens. A token refresh on one side can log the other out.
 
 ## Next
 
@@ -133,7 +139,7 @@ They live in pod memory only. They also stay out of Kubernetes Secrets: those pe
 
   Session history survives a restart. Credentials don't.
 - **Push at start.** `beam-start.sh` streams the credentials and an env file over `kubectl exec` stdin, straight into `/run/claude`. Nothing is written on the laptop or in the pod outside tmpfs.
-- **Env secrets from 1Password.** `beam-start.sh` runs `op inject` locally with `op://` refs. The tmux session sources `/run/claude/env`.
+- **Env secrets from 1Password.** `beam-start.sh` runs `op inject` locally with `op://` refs. The daemon sources `/run/claude/env` before it starts.
 - **Wait for secrets.** The PID 1 supervisor starts Claude only after `/run/claude/config/.credentials.json` exists.
 - **Restart.** A pod restart wipes tmpfs, and Claude waits until the next `beam-start.sh` push.
 
@@ -155,16 +161,22 @@ They live in pod memory only. They also stay out of Kubernetes Secrets: those pe
 | Kyverno policy: exec into the namespace only for your identity | Stops casual access. Cluster admins can still bypass it. |
 | A cluster or VM that only you administer | Cluster admins and node root can read pod memory. This removes them. |
 
-#### Current gap
+#### Done
 
-`beam-start.sh` copies `.credentials.json` onto the PVC. It holds the claude.ai login and 12 MCP OAuth entries. The design above replaces that copy.
+- Memory volume, config dir in memory, symlinks to the PVC, push at start, wait for secrets.
+- Verified: `.credentials.json` and `.claude.json` exist only on tmpfs. `find /home/node` finds neither.
+
+#### Open
+
+- Env secrets from 1Password.
+- The checks under "To verify".
 
 ### 7. Beam down
 
 The reverse of the copy:
 
 - `beam-down.sh`: tar the remote transcript back to the local project folder.
-- `beam-down-switch.sh`: the copy, then replace the local tmux pane with `claude --resume <id>`. Kill the remote pane's Claude.
+- `beam-down-switch.sh`: stop the remote background session, copy the transcript back, and replace the local tmux pane with `claude --resume <id>`.
 - Bring the working directories back: git pull, tar or sync, the same method as item 2.
 
 Path mirroring from item 1 makes the transcript valid on both sides.
