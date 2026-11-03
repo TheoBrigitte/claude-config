@@ -125,7 +125,8 @@ Towards: https://github.com/giantswarm/roadmap/issues/123
 - When asked to reword a PR body, reword it and add a high-level explanation summary to the Solution and Validation sections.
 - Add an architecture diagram to the Solution section when the PR changes how components interact, how data flows, or how the system is deployed.
 - Skip the diagram for local changes: bug fixes, refactors, dependency bumps, docs.
-- Draw the diagram as a Mermaid code block. Github renders it inline.
+- Draw the diagram with the `giantswarm-diagrams` skill.
+- Upload the diagram with `gh pr create --attach` or `gh pr edit --attach`. Reference it in the body as `![alt](./diagram.png)`.
 - Show the architecture after the change. Highlight the added or changed components and edges.
 - Add a before diagram only when the change replaces an existing flow.
 - Keep the diagram small: only the components the PR touches and their direct neighbours.
