@@ -10,12 +10,12 @@ Working on graveler, 2026-11-03.
 
 - An instance is a namespace `claude-theo-<instance>` with one pod, `claude-0`. The namespace has the label `beam.giantswarm.io/instance=<instance>`. Instances are disposable: each has its own home volume and login.
 - `k8s/claude-graveler/manifests.yaml`: namespace, ConfigMap `claude-scripts`, StatefulSet `claude`, 5Gi `emptyDir` home volume at `/home/node` on the node's disk, 64Mi memory volume at `/run/claude`. `INSTANCE` is the placeholder for the instance name.
-- `bin/beam-copy.sh [-n INSTANCE] [SESSION_ID]`: copies a session transcript to an instance and resumes it as a remote background session. The instance defaults to the session's short ID. A missing instance is created, with the local settings. An existing instance gets the session copied again. Every run pushes the current local login and `.claude.json` into the pod's memory.
+- `bin/beam-up.sh [-n INSTANCE] [SESSION_ID]`: copies a session transcript to an instance and resumes it as a remote background session. The instance defaults to the session's short ID. A missing instance is created, with the local settings. An existing instance gets the session copied again. Every run pushes the current local login and `.claude.json` into the pod's memory.
 - `bin/beam-attach.sh INSTANCE [ID]`: attaches to a remote background session. Without ID it opens the session named by the instance, or agent view when the instance name is not a short ID.
-- `bin/beam-copy-switch.sh [-n INSTANCE] [SESSION_ID]`: runs `beam-copy.sh`, then replaces the local tmux pane with the attach.
+- `bin/beam-up-switch.sh [-n INSTANCE] [SESSION_ID]`: runs `beam-up.sh`, then replaces the local tmux pane with the attach.
 - `bin/beam-list.sh`: lists the instances and their pods.
 - `bin/beam-destroy.sh INSTANCE`: deletes the instance namespace, with its pod, home volume and login.
-- `bin/beam-remote-copy.sh`: runs in the pod. `beam-copy.sh` sends its content with `kubectl exec ... bash -c`, in one exec. Data goes over stdin as one tar stream. Each member carries its destination path: the login goes to `/run/claude/config`, the settings and transcript to the home volume.
+- `bin/beam-remote-copy.sh`: runs in the pod. `beam-up.sh` sends its content with `kubectl exec ... bash -c`, in one exec. Data goes over stdin as one tar stream. Each member carries its destination path: the login goes to `/run/claude/config`, the settings and transcript to the home volume.
 
 All scripts use the current kube context.
 
@@ -25,13 +25,13 @@ All scripts use the current kube context.
 - PID 1 runs `start.sh` from the ConfigMap. It installs Claude Code onto the home volume.
 - `CLAUDE_CONFIG_DIR=/run/claude/config`, on the memory volume. It holds `.credentials.json`, `.claude.json` and the daemon state.
 - Symlinks in the config dir point to the home volume: `projects`, `settings.json`, `CLAUDE.md`, `keybindings.json`, `agents`, `skills`, `plugins`.
-- PID 1 supervises `claude daemon run` and reaps orphaned processes. The daemon starts without a login and finds it when `beam-copy.sh` pushes it.
+- PID 1 supervises `claude daemon run` and reaps orphaned processes. The daemon starts without a login and finds it when `beam-up.sh` pushes it.
 - Sessions are Claude background sessions: `claude --bg --resume <id>` starts one, `claude attach <id>` opens it. The short ID is the first 8 characters of the session ID.
 - Detach: Ctrl+Z. ← opens agent view. A dropped connection leaves the session running.
 - Claude runs in `/home/node/work`. Its project folder is `-home-node-work`.
-- Auth: the laptop's claude.ai login, shared with the pod and held in memory. Every `beam-copy.sh` pushes the current copy. Remote Control (`/rc`) works.
-- Settings: copied from the laptop when the instance is created. `beam-copy.sh` removes the hooks.
-- A pod restart wipes the memory volume. Rerun `beam-copy.sh` to push the login again.
+- Auth: the laptop's claude.ai login, shared with the pod and held in memory. Every `beam-up.sh` pushes the current copy. Remote Control (`/rc`) works.
+- Settings: copied from the laptop when the instance is created. `beam-up.sh` removes the hooks.
+- A pod restart wipes the memory volume. Rerun `beam-up.sh` to push the login again.
 
 ### Known issues
 
@@ -48,8 +48,8 @@ Measured on graveler, 2026-11-03:
 
 | Step | Time |
 |---|---|
-| Cold `beam-copy.sh` (new instance) | 20 s, of which ~9-17 s is the Claude download |
-| Warm `beam-copy.sh` (existing instance) | 3.7 s |
+| Cold `beam-up.sh` (new instance) | 20 s, of which ~9-17 s is the Claude download |
+| Warm `beam-up.sh` (existing instance) | 3.7 s |
 | `beam-attach.sh` to the prompt | 1.0-1.4 s |
 | `beam-destroy.sh` | returns at once, namespace gone within a minute |
 
@@ -63,9 +63,9 @@ Mirror the laptop layout in the pod:
 
 - Run the pod with `HOME=/home/theo` and the home volume mounted there.
 - Put working directories at their laptop paths, for example `/home/theo/projects/claude`.
-- The project folder then matches: `-home-theo-projects-claude`. `beam-copy.sh` no longer rewrites it.
+- The project folder then matches: `-home-theo-projects-claude`. `beam-up.sh` no longer rewrites it.
 - Paths in transcripts, CLAUDE.md, settings and hooks resolve unchanged.
-- `beam-copy.sh` places the transcript under the project folder of its recorded `cwd`.
+- `beam-up.sh` places the transcript under the project folder of its recorded `cwd`.
 
 The UID stays 1000 on both sides.
 
@@ -125,7 +125,7 @@ Package the scripts as a skill, `beam-me-up`:
 - The scripts ship inside the skill folder.
 - `/beam-me-up` runs the switch.
 
-To test: when Claude runs the switch through its Bash tool, the switch kills that Claude mid tool call. The remote transcript then ends with a tool call without a result. Check that `--resume` handles this. If it doesn't, have the skill tell the user to run `! beam-copy-switch` themselves.
+To test: when Claude runs the switch through its Bash tool, the switch kills that Claude mid tool call. The remote transcript then ends with a tool call without a result. Check that `--resume` handles this. If it doesn't, have the skill tell the user to run `! beam-up-switch` themselves.
 
 ### 5. Tear down
 
@@ -162,10 +162,10 @@ They live in pod memory only. They also stay out of Kubernetes Secrets: those pe
   - `plugins/`
 
   Session history survives a restart. Credentials don't.
-- **Push at start.** `beam-copy.sh` streams the credentials and an env file over `kubectl exec` stdin, straight into `/run/claude`. Nothing is written on the laptop or in the pod outside tmpfs.
-- **Env secrets from 1Password.** `beam-copy.sh` runs `op inject` locally with `op://` refs. The daemon sources `/run/claude/env` before it starts.
+- **Push at start.** `beam-up.sh` streams the credentials and an env file over `kubectl exec` stdin, straight into `/run/claude`. Nothing is written on the laptop or in the pod outside tmpfs.
+- **Env secrets from 1Password.** `beam-up.sh` runs `op inject` locally with `op://` refs. The daemon sources `/run/claude/env` before it starts.
 - **Wait for secrets.** The PID 1 supervisor starts Claude only after `/run/claude/config/.credentials.json` exists.
-- **Restart.** A pod restart wipes tmpfs, and Claude waits until the next `beam-copy.sh` push.
+- **Restart.** A pod restart wipes tmpfs, and Claude waits until the next `beam-up.sh` push.
 
 #### To verify
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs in the remote pod, sent by beam-copy.sh.
+# Runs in the remote pod, sent by beam-up.sh.
 #
 # Usage: beam-remote-copy.sh SESSION_ID [COLORTERM]
 #

@@ -2,10 +2,10 @@
 # Copy a Claude Code session to a remote instance and resume it there, in the
 # current kube context.
 #
-# Usage: beam-copy.sh [-n INSTANCE] [SESSION_ID]
+# Usage: beam-up.sh [-n INSTANCE] [SESSION_ID]
 #
 # Without SESSION_ID, copies the session this runs from: run it with
-# `! bin/beam-copy.sh` inside Claude Code. The local session keeps running.
+# `! bin/beam-up.sh` inside Claude Code. The local session keeps running.
 # The remote copy is a fork from this point on.
 #
 # An instance is the namespace claude-theo-INSTANCE with one pod. INSTANCE

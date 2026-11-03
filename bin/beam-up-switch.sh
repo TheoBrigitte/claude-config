@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Copy a Claude Code session to a remote instance and switch this tmux pane to it.
 #
-# Usage: beam-copy-switch.sh [-n INSTANCE] [SESSION_ID]
+# Usage: beam-up-switch.sh [-n INSTANCE] [SESSION_ID]
 #
-# Run it with `! bin/beam-copy-switch.sh` inside Claude Code, in tmux:
-#   1. Copies and resumes the session in the instance with beam-copy.sh.
+# Run it with `! bin/beam-up-switch.sh` inside Claude Code, in tmux:
+#   1. Copies and resumes the session in the instance with beam-up.sh.
 #   2. Replaces this pane's local Claude with beam-attach.sh.
 # The local Claude is killed. Detach with Ctrl+Z: the pane drops to a shell.
 set -euo pipefail
@@ -33,6 +33,6 @@ fi
 short="${id:0:8}"
 instance="${instance:-$short}"
 
-"$BIN/beam-copy.sh" -n "$instance" "$id"
+"$BIN/beam-up.sh" -n "$instance" "$id"
 
 tmux respawn-pane -k -t "$TMUX_PANE" -c "$PWD" "$BIN/beam-attach.sh $instance $short; exec $SHELL"
