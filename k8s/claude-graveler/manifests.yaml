@@ -42,6 +42,7 @@ data:
     bind C-a send-prefix
     set -g history-limit 100000
     set -g mouse on
+    set -g focus-events on
     EOF
     fi
 
