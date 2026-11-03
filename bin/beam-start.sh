@@ -5,56 +5,64 @@
 #
 # Steps, each safe to rerun:
 #   1. Apply the namespace, ConfigMap and StatefulSet.
-#   2. Wait for the pod to install tmux and Claude and start the tmux session.
-#   3. On first run only, copy the local Claude login and settings into the
-#      pod, drop the hooks, trust ~/work, and restart Claude to load them.
+#   2. Wait for the pod to install Claude.
+#   3. On first run only, copy the local settings, CLAUDE.md, agents, skills
+#      and plugins to the PVC, and drop the hooks.
+#   4. When the pod's memory has no login, push the local login and
+#      .claude.json into it, and trust ~/work. They never touch the PVC.
+#   5. Wait for the Claude daemon.
 #
-# Attach with bin/beam-attach.sh.
+# Attach with bin/beam-attach.sh, or move a session with bin/beam-copy-switch.sh.
 
 set -euo pipefail
 
 NS=claude-theo
 POD=claude-0
-TMUX=/home/node/micromamba/envs/tools/bin/tmux
+CLAUDE=/home/node/.local/bin/claude
+CONFIG=/run/claude/config
 MANIFESTS="$(dirname "$(readlink -f "$0")")/../k8s/claude-graveler/manifests.yaml"
 
 k() { kubectl -n "$NS" "$@"; }
 pod() { k exec "$POD" -c claude -- "$@"; }
+podin() { k exec -i "$POD" -c claude -- "$@"; }
 
 echo "Applying manifests"
 kubectl apply -f "$MANIFESTS"
 
-echo "Waiting for the tmux session"
-until pod "$TMUX" has-session -t main 2>/dev/null; do sleep 5; done
+echo "Waiting for Claude in the pod"
+until pod test -x "$CLAUDE" 2>/dev/null; do sleep 5; done
 
-if ! pod test -f /home/node/.claude/.credentials.json; then
-  echo "Copying the local Claude login and settings"
-  tar -cz \
-    -C "$(dirname "$(readlink -f "$HOME/.claude.json")")" .claude.json \
-    -C "$HOME" \
-    .claude/.credentials.json .claude/settings.json .claude/CLAUDE.md \
-    .claude/keybindings.json .claude/statusline-command.sh .claude/voices \
+if ! pod test -f /home/node/.claude/settings.json 2>/dev/null; then
+  echo "Copying the local settings to the PVC"
+  tar -cz -C "$HOME" \
+    .claude/settings.json .claude/CLAUDE.md .claude/keybindings.json \
     .claude/agents .claude/skills .claude/plugins |
-    k exec -i "$POD" -c claude -- tar -xz -C /home/node
-
+    podin tar -xz -C /home/node
   pod node -e '
     const fs = require("fs");
-    const settings = "/home/node/.claude/settings.json";
-    const s = JSON.parse(fs.readFileSync(settings, "utf8"));
+    const p = "/home/node/.claude/settings.json";
+    const s = JSON.parse(fs.readFileSync(p, "utf8"));
     delete s.hooks;
-    s.permissions.allow = s.permissions.allow.filter(r => r !== "Glob(*)");
-    fs.writeFileSync(settings, JSON.stringify(s, null, 2) + "\n");
+    fs.writeFileSync(p, JSON.stringify(s, null, 2) + "\n");
+  '
+fi
 
-    const state = "/home/node/.claude.json";
-    const c = JSON.parse(fs.readFileSync(state, "utf8"));
+if ! pod test -f "$CONFIG/.credentials.json" 2>/dev/null; then
+  echo "Pushing the local login into the pod's memory"
+  podin sh -c "umask 077 && cat > $CONFIG/.claude.json" < "$(readlink -f "$HOME/.claude.json")"
+  pod node -e '
+    const fs = require("fs");
+    const p = process.argv[1];
+    const c = JSON.parse(fs.readFileSync(p, "utf8"));
     c.projects = c.projects || {};
     c.projects["/home/node/work"] = { ...c.projects["/home/node/work"], hasTrustDialogAccepted: true };
-    fs.writeFileSync(state, JSON.stringify(c, null, 2) + "\n");
-  '
-
-  echo "Restarting Claude with the copied settings"
-  pod "$TMUX" kill-session -t main
-  until pod "$TMUX" has-session -t main 2>/dev/null; do sleep 2; done
+    fs.writeFileSync(p, JSON.stringify(c, null, 2) + "\n");
+  ' "$CONFIG/.claude.json"
+  podin sh -c "umask 077 && cat > $CONFIG/.credentials.json.tmp && mv $CONFIG/.credentials.json.tmp $CONFIG/.credentials.json" \
+    < "$HOME/.claude/.credentials.json"
 fi
+
+echo "Waiting for the Claude daemon"
+until pod "$CLAUDE" daemon status >/dev/null 2>&1; do sleep 2; done
 
 echo "Claude is running in $POD"

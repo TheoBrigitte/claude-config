@@ -17,41 +17,35 @@ data:
     export LANG=C.UTF-8
     export LC_ALL=C.UTF-8
     cd "$HOME"
-    mkdir -p "$HOME/work" "$HOME/bin"
-
-    # tmux from conda-forge, persisted on the PVC
-    export MAMBA_ROOT_PREFIX="$HOME/micromamba"
-    if [ ! -x "$HOME/bin/micromamba" ]; then
-      curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xj -C "$HOME" bin/micromamba
-    fi
-    if [ ! -x "$MAMBA_ROOT_PREFIX/envs/tools/bin/tmux" ]; then
-      "$HOME/bin/micromamba" create -y -n tools -c conda-forge tmux
-    fi
-    export PATH="$MAMBA_ROOT_PREFIX/envs/tools/bin:$HOME/.local/bin:$HOME/bin:$PATH"
+    mkdir -p "$HOME/work" "$HOME/.claude"
+    export PATH="$HOME/.local/bin:$PATH"
 
     # Claude Code native binary, persisted on the PVC
     if ! command -v claude >/dev/null; then
       curl -fsSL https://claude.ai/install.sh | bash
     fi
 
-    if [ ! -f "$HOME/.tmux.conf" ]; then
-      cat > "$HOME/.tmux.conf" <<'EOF'
-    set -g default-terminal "tmux-256color"
-    set -g prefix C-a
-    unbind C-b
-    bind C-a send-prefix
-    set -g history-limit 100000
-    set -g mouse on
-    set -g focus-events on
-    EOF
-    fi
+    # CLAUDE_CONFIG_DIR is in memory: logins and tokens never reach the PVC.
+    # Only these non-secret parts link to the PVC.
+    mkdir -p "$CLAUDE_CONFIG_DIR"
+    for name in projects settings.json CLAUDE.md keybindings.json agents skills plugins; do
+      ln -sfn "$HOME/.claude/$name" "$CLAUDE_CONFIG_DIR/$name"
+    done
+    mkdir -p "$HOME/.claude/projects"
 
-    # PID 1 supervises the tmux session and reaps orphaned processes.
+    # beam-start.sh pushes the login into memory.
+    until [ -f "$CLAUDE_CONFIG_DIR/.credentials.json" ]; do sleep 2; done
+
+    # PID 1 supervises the daemon and reaps orphaned processes.
     set +e
+    cd "$HOME/work"
+    dpid=
     while true; do
-      tmux has-session -t main 2>/dev/null || \
-        tmux new-session -d -x 200 -y 50 -s main -c "$HOME/work" 'claude; exec bash'
-      sleep 10 & wait
+      if [ -z "$dpid" ] || ! kill -0 "$dpid" 2>/dev/null; then
+        claude daemon run &
+        dpid=$!
+      fi
+      sleep 10 & wait $!
     done
 ---
 apiVersion: apps/v1
@@ -81,6 +75,9 @@ spec:
         - name: claude
           image: node:22-bookworm
           command: ["/bin/bash", "/scripts/start.sh"]
+          env:
+            - name: CLAUDE_CONFIG_DIR
+              value: /run/claude/config
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -96,10 +93,16 @@ spec:
               mountPath: /home/node
             - name: scripts
               mountPath: /scripts
+            - name: secrets
+              mountPath: /run/claude
       volumes:
         - name: scripts
           configMap:
             name: claude-scripts
+        - name: secrets
+          emptyDir:
+            medium: Memory
+            sizeLimit: 64Mi
   volumeClaimTemplates:
     - metadata:
         name: home

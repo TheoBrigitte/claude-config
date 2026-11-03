@@ -40,4 +40,4 @@ tar -cz -C "$snap" "${files[@]}" |
     sh -c "mkdir -p $REMOTE_PROJECT && tar -xz -C $REMOTE_PROJECT"
 
 echo "Copied session $id to $POD"
-echo "Attach with bin/beam-attach.sh, then run: claude --resume $id"
+echo "Resume it in the pod with: claude --bg --resume $id"
