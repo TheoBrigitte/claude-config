@@ -4,25 +4,28 @@ Run Claude Code in a Kubernetes pod. It keeps working while the laptop is closed
 
 ## Status
 
-Working on graveler, 2026-11-03.
+Working on graveler, 2026-11-04.
 
 ### Pieces
 
 - An instance is a namespace `claude-theo-<instance>` with one pod, `claude-0`. The namespace has the label `beam.giantswarm.io/instance=<instance>`. Instances are disposable: each has its own home volume and login.
 - `k8s/claude-graveler/manifests.yaml`: namespace, ConfigMap `claude-scripts`, StatefulSet `claude`, 5Gi `emptyDir` home volume at `/home/node` on the node's disk, 64Mi memory volume at `/run/claude`. `INSTANCE` is the placeholder for the instance name. Lines ending in `# ephemeral` hold the `emptyDir`. Lines starting with `#persistent ` hold a 20Gi gp3 `volumeClaimTemplate`. `--persistent` deletes the first and uncomments the second.
 - `bin/beam-up.sh [-n INSTANCE] [--persistent] [--new | SESSION_ID]`: creates an instance and starts a remote background session in it. With SESSION_ID, it copies the session transcript and resumes it. With `--new`, it starts an empty session. The instance defaults to the session's short ID, or to 8 random hex characters with `--new`. An existing instance makes it fail: destroy it or pick another `-n`. Every run pushes the local settings, login and `.claude.json`. The login and `.claude.json` go into the pod's memory.
-- `bin/beam-attach.sh INSTANCE [ID]`: attaches to a remote background session. Without ID it opens the session `beam-up.sh` started, from `~/.beam-session` in the pod.
+- `bin/beam-attach.sh [--push-credentials] INSTANCE [ID]`: attaches to a remote background session. Without ID it opens the session `beam-up.sh` started, from `~/.beam-session` in the pod. `--push-credentials` first pushes the local login and settings into memory and resumes the session from its transcript when the daemon doesn't run it.
 - `bin/beam-up-switch.sh [-n INSTANCE] [--persistent] [--new | SESSION_ID]`: runs `beam-up.sh` with the same arguments, then replaces the local tmux pane with the attach.
 - `bin/beam-list.sh`: lists the instances and their pods.
 - `bin/beam-destroy.sh INSTANCE`: deletes the instance namespace, with its pod, home volume and login. A gp3 PV goes with it: its reclaim policy is Delete.
+- `bin/beam-lib.sh`: builds the login and settings tar for `beam-up.sh` and `beam-attach.sh`.
+- `images/claude/Dockerfile`: the instance image, `docker.io/theo01/beam-claude:<claude version>`.
 - `bin/beam-remote-copy.sh`: runs in the pod. `beam-up.sh` sends its content with `kubectl exec ... bash -c`, in one exec. Data goes over stdin as one tar stream. Each member carries its destination path: the login goes to `/run/claude/config`, the settings and transcript to the home volume.
 
 All scripts use the current kube context.
 
 ### Pod
 
-- Image `node:22-bookworm`, user 1000, restricted pod security. graveler's Kyverno enforces it.
-- PID 1 runs `start.sh` from the ConfigMap. It installs Claude Code onto the home volume.
+- Image `docker.io/theo01/beam-claude:2.1.317`, public, 158 MB compressed. Alpine 3.24, the native Claude binary at `/usr/local/bin/claude`, bash, jq, procps and GNU coreutils, tar, grep, sed, gawk, findutils, diffutils and which. No node, curl, git or python3.
+- User 1000, restricted pod security. graveler's Kyverno enforces it.
+- PID 1 runs `start.sh` from the ConfigMap. The pod installs nothing at boot.
 - `CLAUDE_CONFIG_DIR=/run/claude/config`, on the memory volume. It holds `.credentials.json`, `.claude.json` and the daemon state.
 - Symlinks in the config dir point to the home volume: `projects`, `settings.json`, `CLAUDE.md`, `keybindings.json`, `agents`, `skills`, `plugins`.
 - PID 1 supervises `claude daemon run` and reaps orphaned processes. The daemon starts without a login and finds it when `beam-up.sh` pushes it.
@@ -38,38 +41,41 @@ All scripts use the current kube context.
 ### Known issues
 
 - **Paths differ.** Transcripts refer to `/home/theo/...`. The pod uses `/home/node/work`.
-- **Tools are missing.** The pod has bash, git, node, curl and Claude. It has no jq, go, gh, kubectl or `claude-statusline`.
+- **Tools are missing.** The image has no git, curl, go, gh, kubectl, python3 or `claude-statusline`.
+- **A plugin hook fails.** A `SessionStart:resume` hook from a plugin fails with `env: 'python3': No such file or directory`. The session still starts.
+- **Registry policy.** graveler's `restrict-image-registries` policy flags images outside `gsoci.azurecr.io/giantswarm`. It runs in Audit mode, so pods still start.
 - **MCP servers don't connect.** Their configs and env secrets stay on the laptop.
-- **Claude is pinned.** `DISABLE_AUTOUPDATER=1` from the settings pins v2.1.317. Upgrade with `claude update` in the pod.
+- **Claude is pinned.** The image pins v2.1.317 and sets `DISABLE_AUTOUPDATER=1`. Upgrade by rebuilding the image.
 - **Stale attach clients.** A dropped connection leaves a `claude attach` process in the pod until the kubelet idle timeout. `beam-attach.sh` kills them before attaching.
 - **Shared login refresh.** The pod's daemon refreshes the OAuth token on its own schedule. If a refresh replaces the refresh token, the laptop's copy may stop working until the next push or a local `/login`.
 
 ### Restart
 
-Tested on a `--persistent` instance with `kubectl delete pod claude-0`. The pod was Ready again after 34 s.
+Tested on a `--persistent` instance with `kubectl delete pod claude-0`. The pod was Ready again after 38 s.
 
-- Kept, on the PVC: transcripts, settings without hooks, `~/.beam-session`, the Claude install. Claude does not download again.
-- Lost, in memory: `.credentials.json`, the full `.claude.json` with the trust of `~/work`, the background sessions. The daemon restarts with an empty roster.
-- `beam-attach.sh` fails: `No job matching '<short>'`.
-- `beam-up.sh` refuses the existing instance. No script pushes the login again.
+- Kept, on the PVC: transcripts, settings without hooks, `~/.beam-session`.
+- Lost, in memory: `.credentials.json`, the full `.claude.json` with the trust of `~/work`, the background sessions. Plain `beam-attach.sh` fails: `No job matching '<short>'`.
+- `bin/beam-attach.sh --push-credentials INSTANCE` pushes the login, resumes the session and attaches. It reached the copied conversation in 5.3 s. On a running instance it starts no second session.
 
-To continue, the user pushes the login and `.claude.json` into `/run/claude/config` by hand, marks `/home/node/work` trusted, and runs `claude --bg --resume <id>` from `/home/node/work`. On an `emptyDir` instance a restart also loses the home volume.
+On an `emptyDir` instance a restart also loses the home volume.
 
 ### Timings
 
-Measured on graveler, 2026-11-03:
+Measured on graveler, 2026-11-04, image cached on the node:
 
 | Step | Time |
 |---|---|
-| `beam-up.sh SESSION_ID` | 21-22 s, of which ~9-17 s is the Claude download |
-| `beam-up.sh --new` | 19-21 s |
-| `beam-up.sh --persistent SESSION_ID` | 28 s |
-| `beam-up-switch.sh` to the prompt | 22 s |
-| `beam-attach.sh` to the prompt | 1.0 s |
-| Pod restart, `--persistent` | 34 s to Ready |
-| `beam-destroy.sh` | 60 s, PV included |
+| `beam-up.sh SESSION_ID` | 6.9 s |
+| `beam-up.sh --new` | 6.7 s |
+| `beam-up.sh --persistent SESSION_ID` | 13.9 s |
+| `beam-attach.sh` to the prompt | 1.1-1.3 s |
+| `beam-attach.sh --push-credentials` after a restart | 5.3 s |
+| Pod restart, `--persistent` | 38 s to Ready |
+| `beam-destroy.sh` | ~60 s, waits for the namespace to go |
 
-An `emptyDir` home volume is ready in ~1.7 s. A fresh gp3 PVC took 8.7-12.9 s.
+- The first pull of the image on a node adds 4.5-4.8 s from Docker Hub.
+- An `emptyDir` home volume is ready in ~1.7 s. A fresh gp3 PVC takes 8.7-12.9 s.
+- A full cluster adds the time Karpenter needs for a new node: 135 s in one run.
 
 ## Next
 
@@ -109,17 +115,18 @@ Size: skip `.git/objects` caches, `node_modules` and build output, or respect `.
 
 ### 3. Tools
 
-Build an image to replace the install-at-boot setup:
+The image exists: `images/claude/Dockerfile`, pushed to Docker Hub. Rebuild and push with `docker build -t docker.io/theo01/beam-claude:<version> images/claude && docker push docker.io/theo01/beam-claude:<version>`, then update the manifest.
 
-- Base: Debian bookworm.
-- Shell tools: bash, zsh, tmux, git, jq, yq, ripgrep, fd, curl.
+Still to add:
+
+- Shell tools: zsh, git, yq, ripgrep, fd, curl.
 - Languages: go, node with npx, uv with uvx. The stdio MCP servers use npx and uvx.
 - Kubernetes: kubectl, helm, flux, tsh, kubectl-gs, opsctl, devctl.
 - GitHub: gh.
 - Claude: Claude Code pinned, `claude-statusline`.
-- User 1000, no setuid binaries. Restricted pod security requires both.
+- python3, for plugin hooks.
 
-Build in CI and push to `gsoci.azurecr.io` or `gsociprivate.azurecr.io`. Pin the tag in the StatefulSet.
+Later: build in CI and push to `gsoci.azurecr.io`, which the registry policy allows.
 
 Existing images, checked on 2026-11-03:
 
@@ -129,7 +136,7 @@ Existing images, checked on 2026-11-03:
 | `gsoci.azurecr.io/giantswarm/klaus:1.0.37` | 2.1.311 | No curl, git, jq or gh |
 | `gsoci.azurecr.io/giantswarm/claude-code-ci` | 2.1.36 | Too old for `claude daemon` |
 
-None fits. Build a new image in https://github.com/giantswarm/custom-container-images, using `claude-code-ci` as the template. graveler's `restrict-image-registries` policy runs in Audit mode and allows `gsoci.azurecr.io/giantswarm/*`.
+None fits. Public images such as `docker/sandbox-templates:claude-code` either lag the Claude version, run as root, or install Claude under `$HOME`. For gsoci, use https://github.com/giantswarm/custom-container-images with `claude-code-ci` as the template.
 
 The home volume keeps `$HOME` only. Tools live in the image.
 
