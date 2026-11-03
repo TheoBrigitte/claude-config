@@ -9,9 +9,9 @@ Working on graveler, 2026-11-03.
 ### Pieces
 
 - `k8s/claude-graveler/manifests.yaml`: namespace `claude-theo`, ConfigMap `claude-scripts`, StatefulSet `claude`, 20Gi gp3 PVC at `/home/node`, 64Mi memory volume at `/run/claude`.
-- `bin/beam-start.sh`: applies the manifests and waits for the daemon. On first run it copies the settings to the PVC. When the pod's memory has no login, it pushes the login into memory.
+- `bin/beam-start.sh`: applies the manifests and waits for the daemon. On first run it copies the settings to the PVC. On every run it pushes the current local login and `.claude.json` into the pod's memory.
 - `bin/beam-attach.sh [ID]`: attaches to a remote background session. Without ID it opens agent view.
-- `bin/beam-copy.sh`: copies a session transcript to the pod and resumes it as a remote background session.
+- `bin/beam-copy.sh`: runs `beam-start.sh`, copies a session transcript to the pod, and resumes it as a remote background session.
 - `bin/beam-copy-switch.sh`: runs `beam-copy.sh`, then replaces the local tmux pane with the attach.
 
 All scripts use the current kube context.
@@ -26,7 +26,7 @@ All scripts use the current kube context.
 - Sessions are Claude background sessions: `claude --bg --resume <id>` starts one, `claude attach <id>` opens it. The short ID is the first 8 characters of the session ID.
 - Detach: Ctrl+Z. ← opens agent view. A dropped connection leaves the session running.
 - Claude runs in `/home/node/work`. Its project folder is `-home-node-work`.
-- Auth: the laptop's claude.ai login, in memory. Remote Control (`/rc`) works.
+- Auth: the laptop's claude.ai login, shared with the pod and held in memory. Every `beam-start.sh` and `beam-copy.sh` pushes the current copy. Remote Control (`/rc`) works.
 - Settings: copied from the laptop. `beam-start.sh` removes the hooks.
 - A pod restart wipes the memory volume. Rerun `beam-start.sh` to push the login again.
 
@@ -36,9 +36,9 @@ All scripts use the current kube context.
 - **Tools are missing.** The pod has bash, git, node, curl and Claude. It has no jq, go, gh, kubectl or `claude-statusline`.
 - **MCP servers don't connect.** Their configs and env secrets stay on the laptop.
 - **Claude is pinned.** `DISABLE_AUTOUPDATER=1` from the settings pins v2.1.317. Upgrade with `claude update` in the pod.
-- **Errors are unclear when the pod is missing.** `beam-copy.sh` prints `tar: Wrote only 4096 of 10240 bytes`. It should check for the namespace and pod first.
 - **Stale attach clients.** A dropped connection leaves a `claude attach` process in the pod until the kubelet idle timeout. `beam-attach.sh` kills them before attaching.
-- **The login is shared.** The pod uses copies of the laptop's OAuth tokens. A token refresh on one side can log the other out.
+- **Shared login refresh.** The pod's daemon refreshes the OAuth token on its own schedule. If a refresh replaces the refresh token, the laptop's copy may stop working until the next push or a local `/login`.
+- **Copies are slow.** `beam-copy.sh` takes about 45 seconds, mostly `kubectl exec` round trips through Teleport.
 
 ## Next
 
@@ -155,7 +155,6 @@ They live in pod memory only. They also stay out of Kubernetes Secrets: those pe
 
 | Control | Effect |
 |---|---|
-| Separate logins in the pod: `/login`, `/mcp` auth | No refresh token shared with the laptop. A refresh on one side can't log the other out. |
 | Scoped, short-lived tokens per remote session | Limits the impact of a leak. |
 | Egress NetworkPolicy allowlist: Anthropic, GitHub, Slack, the MCP hosts | Blocks exfiltration to arbitrary hosts. |
 | Kyverno policy: exec into the namespace only for your identity | Stops casual access. Cluster admins can still bypass it. |

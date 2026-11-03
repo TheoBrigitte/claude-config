@@ -8,7 +8,8 @@
 # `! bin/beam-copy.sh` inside Claude Code. The local session keeps running.
 # The remote copy is a fork from this point on.
 #
-# Stops the remote background session with this ID, if one runs, copies the
+# Runs beam-start.sh, so the pod has the current local login. Stops the
+# remote background session with this ID, if one runs, copies the
 # transcript, and resumes it as a remote background session.
 set -euo pipefail
 
@@ -16,6 +17,7 @@ NS=claude-theo
 POD=claude-0
 CLAUDE=/home/node/.local/bin/claude
 REMOTE_PROJECT=/home/node/.claude/projects/-home-node-work
+BIN="$(dirname "$(readlink -f "$0")")"
 
 id="${1:-${CLAUDE_CODE_SESSION_ID:-}}"
 if [ -z "$id" ]; then
@@ -42,6 +44,8 @@ if [ -d "$dir/$id" ]; then
 fi
 
 pod() { kubectl -n "$NS" exec "$POD" -c claude -- "$@"; }
+
+"$BIN/beam-start.sh" >/dev/null
 
 pod "$CLAUDE" stop "$short" >/dev/null 2>&1 || true
 
