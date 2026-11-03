@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Start the remote Claude Code on graveler and attach to it.
+# Set up the remote Claude Code pod on graveler.
 #
-# Usage: beam-me-up.sh
+# Usage: beam-start.sh
 #
 # Steps, each safe to rerun:
 #   1. Apply the namespace, ConfigMap and StatefulSet.
 #   2. Wait for the pod to install tmux and Claude and start the tmux session.
 #   3. On first run only, copy the local Claude login and settings into the
 #      pod, drop the hooks, trust ~/work, and restart Claude to load them.
-#   4. Attach to the tmux session. Detach with Ctrl+A d.
+#
+# Attach with scripts/claude-graveler.
 
 set -euo pipefail
 
@@ -57,6 +58,4 @@ if ! pod test -f /home/node/.claude/.credentials.json; then
   until pod "$TMUX" has-session -t main 2>/dev/null; do sleep 2; done
 fi
 
-exec kubectl --context "$CTX" -n "$NS" exec -it "$POD" -c claude -- \
-  env TERM="${TERM:-xterm-256color}" LANG=C.UTF-8 LC_ALL=C.UTF-8 \
-  "$TMUX" attach -t main
+echo "Claude is running in $POD"
