@@ -21,8 +21,10 @@ RUN apk add --no-cache bash ca-certificates coreutils diffutils findutils gawk g
  && adduser -D -u 1000 -G node -h /home/node -s /bin/bash node
 
 COPY --from=claude /claude /usr/local/bin/claude
+COPY --chmod=0755 start.sh /usr/local/bin/start.sh
 
 ENV DISABLE_AUTOUPDATER=1
 
 USER node
 WORKDIR /home/node
+CMD ["/usr/local/bin/start.sh"]
