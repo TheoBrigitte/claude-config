@@ -24,7 +24,7 @@ All scripts use the current kube context.
 
 ### Pod
 
-- Image `docker.io/theo01/beam-claude:2.1.317-2`, public, 158 MB compressed. Alpine 3.24, tini, the native Claude binary at `/usr/local/bin/claude`, bash, jq, procps and GNU coreutils, tar, grep, sed, gawk, findutils, diffutils and which. No node, curl, git or python3.
+- Image `docker.io/theo01/beam-claude:2.1.317-3`, public, 179 MB compressed. Alpine 3.24, tini, the native Claude binary at `/usr/local/bin/claude`, bash, jq, git, curl, python3, procps and GNU coreutils, tar, grep, sed, gawk, findutils, diffutils and which. No node.
 - The image sets `SHELL=/bin/bash`, `LANG=C.UTF-8`, `LC_ALL=C.UTF-8`, `CLAUDE_CONFIG_DIR=/run/claude/config` and `DISABLE_AUTOUPDATER=1`. `kubectl exec` sessions see them.
 - User 1000, restricted pod security. graveler's Kyverno enforces it.
 - PID 1 is tini. It runs the image's `start.sh`, forwards signals and reaps orphaned processes. The pod installs nothing at boot.
@@ -45,8 +45,7 @@ All scripts use the current kube context.
 ### Known issues
 
 - **Paths differ.** Transcripts refer to `/home/theo/...`. The pod uses `/home/node/work`.
-- **Tools are missing.** The image has no git, curl, go, gh, kubectl, python3 or `claude-statusline`.
-- **A plugin hook fails.** A `SessionStart:resume` hook from a plugin fails with `env: 'python3': No such file or directory`. The session still starts.
+- **Tools are missing.** The image has no go, gh, kubectl or `claude-statusline`.
 - **Registry policy.** graveler's `restrict-image-registries` policy flags images outside `gsoci.azurecr.io/giantswarm`. It runs in Audit mode, so pods still start.
 - **MCP servers don't connect.** Their configs and env secrets stay on the laptop.
 - **Claude is pinned.** The image pins v2.1.317 and sets `DISABLE_AUTOUPDATER=1`. Upgrade by rebuilding the image.
@@ -132,12 +131,11 @@ The image exists: `images/claude/Dockerfile`, pushed to Docker Hub. Rebuild and 
 
 Still to add:
 
-- Shell tools: zsh, git, yq, ripgrep, fd, curl.
+- Shell tools: zsh, yq, ripgrep, fd.
 - Languages: go, node with npx, uv with uvx. The stdio MCP servers use npx and uvx.
 - Kubernetes: kubectl, helm, flux, tsh, kubectl-gs, opsctl, devctl.
 - GitHub: gh.
 - Claude: Claude Code pinned, `claude-statusline`.
-- python3, for plugin hooks.
 
 Later: build in CI and push to `gsoci.azurecr.io`, which the registry policy allows.
 
