@@ -35,7 +35,7 @@ spec:
           # Bump the suffix on any image change. Reset it to 1 when the Claude version changes.
           # Rebuild and push:
           #   docker build -t docker.io/theo01/beam-claude:<tag> images/claude && docker push docker.io/theo01/beam-claude:<tag>
-          image: docker.io/theo01/beam-claude:2.1.317-2
+          image: docker.io/theo01/beam-claude:2.1.317-3
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
