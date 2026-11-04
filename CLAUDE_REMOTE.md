@@ -17,19 +17,22 @@ Working on graveler, 2026-11-04.
 - `bin/beam-destroy.sh INSTANCE`: deletes the instance namespace, with its pod, home volume and login. A gp3 PV goes with it: its reclaim policy is Delete.
 - `bin/beam-lib.sh`: builds the login and settings tar for `beam-up.sh` and `beam-attach.sh`.
 - `images/claude/Dockerfile`: the instance image, `docker.io/theo01/beam-claude:<claude version>-<build>`. Bump the build suffix on any image change. Reset it to 1 when the Claude version changes.
-- `images/claude/start.sh`: the image's default command, at `/usr/local/bin/start.sh`.
+- `images/claude/start.sh`: the image's default command, at `/usr/local/bin/start.sh`. tini runs it.
 - `bin/beam-remote-copy.sh`: runs in the pod. `beam-up.sh` sends its content with `kubectl exec ... bash -c`, in one exec. Data goes over stdin as one tar stream. Each member carries its destination path: the login goes to `/run/claude/config`, the settings and transcript to the home volume.
 
 All scripts use the current kube context.
 
 ### Pod
 
-- Image `docker.io/theo01/beam-claude:2.1.317-1`, public, 158 MB compressed. Alpine 3.24, the native Claude binary at `/usr/local/bin/claude`, bash, jq, procps and GNU coreutils, tar, grep, sed, gawk, findutils, diffutils and which. No node, curl, git or python3.
+- Image `docker.io/theo01/beam-claude:2.1.317-2`, public, 158 MB compressed. Alpine 3.24, tini, the native Claude binary at `/usr/local/bin/claude`, bash, jq, procps and GNU coreutils, tar, grep, sed, gawk, findutils, diffutils and which. No node, curl, git or python3.
+- The image sets `SHELL=/bin/bash`, `LANG=C.UTF-8`, `LC_ALL=C.UTF-8`, `CLAUDE_CONFIG_DIR=/run/claude/config` and `DISABLE_AUTOUPDATER=1`. `kubectl exec` sessions see them.
 - User 1000, restricted pod security. graveler's Kyverno enforces it.
-- PID 1 runs the image's `start.sh`. The pod installs nothing at boot.
+- PID 1 is tini. It runs the image's `start.sh`, forwards signals and reaps orphaned processes. The pod installs nothing at boot.
+- `start.sh` creates the config dir and the symlinks, then execs `claude daemon run`. The daemon starts without a login and finds it when `beam-up.sh` pushes it.
 - `CLAUDE_CONFIG_DIR=/run/claude/config`, on the memory volume. It holds `.credentials.json`, `.claude.json` and the daemon state.
 - Symlinks in the config dir point to the home volume: `projects`, `settings.json`, `CLAUDE.md`, `keybindings.json`, `agents`, `skills`, `plugins`.
-- PID 1 supervises `claude daemon run` and reaps orphaned processes. The daemon starts without a login and finds it when `beam-up.sh` pushes it.
+- When the daemon exits, the container exits and the kubelet restarts it in ~1 s. The memory and home volumes stay. The background sessions stop. See Restart.
+- Pod deletion takes ~2 s: the daemon exits on SIGTERM.
 - Sessions are Claude background sessions: `claude --bg --resume <id>` starts one, `claude attach <id>` opens it. The short ID is the first 8 characters of the session ID.
 - `claude --bg` picks its own session ID. It ignores `--session-id` with a warning. `claude --bg --resume <id>` without a transcript exits on attach. `--new` runs plain `claude --bg` and reads the short ID from its output.
 - `claude attach` matches a name only when it is not 8 hex characters.
@@ -60,6 +63,13 @@ Tested on a `--persistent` instance with `kubectl delete pod claude-0`. The pod 
 
 On an `emptyDir` instance a restart also loses the home volume.
 
+Daemon exit, tested by killing `claude daemon run`. The container restarted once, Ready in ~1 s.
+
+- Kept, in memory: `.credentials.json`, `.claude.json`.
+- Lost: the background sessions.
+- `bin/beam-attach.sh --push-credentials INSTANCE` resumes the session and attaches. It reached the copied conversation in 5.3 s.
+- A `--new` session without a message has no transcript. `--push-credentials` then fails: `No single transcript for session <short>`.
+
 ### Timings
 
 Measured on graveler, 2026-11-04, image cached on the node:
@@ -67,14 +77,16 @@ Measured on graveler, 2026-11-04, image cached on the node:
 | Step | Time |
 |---|---|
 | `beam-up.sh SESSION_ID` | 6.9 s |
-| `beam-up.sh --new` | 6.7 s |
+| `beam-up.sh --new` | 6.0-6.1 s |
 | `beam-up.sh --persistent SESSION_ID` | 13.9 s |
-| `beam-attach.sh` to the prompt | 1.1-1.3 s |
+| `beam-attach.sh` to the prompt | 1.3 s |
 | `beam-attach.sh --push-credentials` after a restart | 5.3 s |
 | Pod restart, `--persistent` | 38 s to Ready |
-| `beam-destroy.sh` | ~60 s, waits for the namespace to go |
+| `kubectl delete pod claude-0`, `emptyDir` | 1.8 s, Ready 1.0 s later |
+| Daemon exit to container Ready | ~1 s |
+| `beam-destroy.sh` | 0.4 s, the namespace is gone after 16 s |
 
-- The first pull of the image on a node adds 4.5-4.8 s from Docker Hub.
+- The first pull of the image on a node adds 4.5-8.4 s from Docker Hub.
 - An `emptyDir` home volume is ready in ~1.7 s. A fresh gp3 PVC takes 8.7-12.9 s.
 - A full cluster adds the time Karpenter needs for a new node: 135 s in one run.
 
