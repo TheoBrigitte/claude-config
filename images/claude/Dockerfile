@@ -16,15 +16,20 @@ FROM claude-${TARGETARCH} AS claude
 
 FROM alpine:3.24
 
-RUN apk add --no-cache bash ca-certificates coreutils diffutils findutils gawk grep gzip jq libgcc libstdc++ procps-ng sed tar which \
+RUN apk add --no-cache bash ca-certificates coreutils diffutils findutils gawk grep gzip jq libgcc libstdc++ procps-ng sed tar tini which \
  && addgroup -g 1000 node \
  && adduser -D -u 1000 -G node -h /home/node -s /bin/bash node
 
 COPY --from=claude /claude /usr/local/bin/claude
 COPY --chmod=0755 start.sh /usr/local/bin/start.sh
 
-ENV DISABLE_AUTOUPDATER=1
+ENV DISABLE_AUTOUPDATER=1 \
+    SHELL=/bin/bash \
+    LANG=C.UTF-8 \
+    LC_ALL=C.UTF-8 \
+    CLAUDE_CONFIG_DIR=/run/claude/config
 
 USER node
 WORKDIR /home/node
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["/usr/local/bin/start.sh"]
