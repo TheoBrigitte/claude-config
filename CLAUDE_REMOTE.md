@@ -9,23 +9,24 @@ Working on graveler, 2026-11-04.
 ### Pieces
 
 - An instance is a namespace `claude-theo-<instance>` with one pod, `claude-0`. The namespace has the label `beam.giantswarm.io/instance=<instance>`. Instances are disposable: each has its own home volume and login.
-- `k8s/claude-graveler/manifests.yaml`: namespace, ConfigMap `claude-scripts`, StatefulSet `claude`, 5Gi `emptyDir` home volume at `/home/node` on the node's disk, 64Mi memory volume at `/run/claude`. `INSTANCE` is the placeholder for the instance name. Lines ending in `# ephemeral` hold the `emptyDir`. Lines starting with `#persistent ` hold a 20Gi gp3 `volumeClaimTemplate`. `--persistent` deletes the first and uncomments the second.
+- `k8s/claude-graveler/manifests.yaml`: namespace, StatefulSet `claude`, 5Gi `emptyDir` home volume at `/home/node` on the node's disk, 64Mi memory volume at `/run/claude`. `INSTANCE` is the placeholder for the instance name. Lines ending in `# ephemeral` hold the `emptyDir`. Lines starting with `#persistent ` hold a 20Gi gp3 `volumeClaimTemplate`. `--persistent` deletes the first and uncomments the second.
 - `bin/beam-up.sh [-n INSTANCE] [--persistent] [--new | SESSION_ID]`: creates an instance and starts a remote background session in it. With SESSION_ID, it copies the session transcript and resumes it. With `--new`, it starts an empty session. The instance defaults to the session's short ID, or to 8 random hex characters with `--new`. An existing instance makes it fail: destroy it or pick another `-n`. Every run pushes the local settings, login and `.claude.json`. The login and `.claude.json` go into the pod's memory.
 - `bin/beam-attach.sh [--push-credentials] INSTANCE [ID]`: attaches to a remote background session. Without ID it opens the session `beam-up.sh` started, from `~/.beam-session` in the pod. `--push-credentials` first pushes the local login and settings into memory and resumes the session from its transcript when the daemon doesn't run it.
 - `bin/beam-up-switch.sh [-n INSTANCE] [--persistent] [--new | SESSION_ID]`: runs `beam-up.sh` with the same arguments, then replaces the local tmux pane with the attach.
 - `bin/beam-list.sh`: lists the instances and their pods.
 - `bin/beam-destroy.sh INSTANCE`: deletes the instance namespace, with its pod, home volume and login. A gp3 PV goes with it: its reclaim policy is Delete.
 - `bin/beam-lib.sh`: builds the login and settings tar for `beam-up.sh` and `beam-attach.sh`.
-- `images/claude/Dockerfile`: the instance image, `docker.io/theo01/beam-claude:<claude version>`.
+- `images/claude/Dockerfile`: the instance image, `docker.io/theo01/beam-claude:<claude version>-<build>`. Bump the build suffix on any image change. Reset it to 1 when the Claude version changes.
+- `images/claude/start.sh`: the image's default command, at `/usr/local/bin/start.sh`.
 - `bin/beam-remote-copy.sh`: runs in the pod. `beam-up.sh` sends its content with `kubectl exec ... bash -c`, in one exec. Data goes over stdin as one tar stream. Each member carries its destination path: the login goes to `/run/claude/config`, the settings and transcript to the home volume.
 
 All scripts use the current kube context.
 
 ### Pod
 
-- Image `docker.io/theo01/beam-claude:2.1.317`, public, 158 MB compressed. Alpine 3.24, the native Claude binary at `/usr/local/bin/claude`, bash, jq, procps and GNU coreutils, tar, grep, sed, gawk, findutils, diffutils and which. No node, curl, git or python3.
+- Image `docker.io/theo01/beam-claude:2.1.317-1`, public, 158 MB compressed. Alpine 3.24, the native Claude binary at `/usr/local/bin/claude`, bash, jq, procps and GNU coreutils, tar, grep, sed, gawk, findutils, diffutils and which. No node, curl, git or python3.
 - User 1000, restricted pod security. graveler's Kyverno enforces it.
-- PID 1 runs `start.sh` from the ConfigMap. The pod installs nothing at boot.
+- PID 1 runs the image's `start.sh`. The pod installs nothing at boot.
 - `CLAUDE_CONFIG_DIR=/run/claude/config`, on the memory volume. It holds `.credentials.json`, `.claude.json` and the daemon state.
 - Symlinks in the config dir point to the home volume: `projects`, `settings.json`, `CLAUDE.md`, `keybindings.json`, `agents`, `skills`, `plugins`.
 - PID 1 supervises `claude daemon run` and reaps orphaned processes. The daemon starts without a login and finds it when `beam-up.sh` pushes it.
@@ -115,7 +116,7 @@ Size: skip `.git/objects` caches, `node_modules` and build output, or respect `.
 
 ### 3. Tools
 
-The image exists: `images/claude/Dockerfile`, pushed to Docker Hub. Rebuild and push with `docker build -t docker.io/theo01/beam-claude:<version> images/claude && docker push docker.io/theo01/beam-claude:<version>`, then update the manifest.
+The image exists: `images/claude/Dockerfile`, pushed to Docker Hub. Rebuild and push with `docker build -t docker.io/theo01/beam-claude:<tag> images/claude && docker push docker.io/theo01/beam-claude:<tag>`, then update the manifest. The tag is `<claude version>-<build>`. Bump the build suffix on any image change. Reset it to 1 when the Claude version changes. Never overwrite a pushed tag: nodes keep the cached image.
 
 Still to add:
 
