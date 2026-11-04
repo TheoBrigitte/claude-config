@@ -153,13 +153,9 @@ The home volume keeps `$HOME` only. Tools live in the image.
 
 ### 4. Skill
 
-Package the scripts as a skill, `beam-me-up`:
+Done: `claude/skills/beam-up/SKILL.md`. It runs `beam-up.sh`, `beam-list.sh` and `beam-destroy.sh`, and asks before destroying. It never runs `beam-up-switch.sh` (that kills the calling Claude) or `beam-attach.sh` (needs a terminal): it tells the user the command instead.
 
-- `SKILL.md` tells Claude when to run each script: start, copy, switch, attach, stop, down.
-- The scripts ship inside the skill folder.
-- `/beam-me-up` runs the switch.
-
-To test: when Claude runs the switch through its Bash tool, the switch kills that Claude mid tool call. The remote transcript then ends with a tool call without a result. Check that `--resume` handles this. If it doesn't, have the skill tell the user to run `! beam-up-switch` themselves.
+A copy made from Claude's Bash tool ends with that tool call. The remote session shows it as interrupted and continues normally. Tested 2026-11-04.
 
 ### 5. Tear down
 
