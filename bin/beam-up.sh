@@ -24,6 +24,16 @@ POD=claude-0
 . "$BIN/beam-lib.sh"
 USAGE="Usage: beam-up.sh [-n INSTANCE] [--persistent] [--new | SESSION_ID]"
 
+# Each step shows while it runs, then gets a green check when done.
+# beam-up-switch.sh pipes stdout through tee to stderr, hence the -t 2.
+if [ -t 1 ] || [ -t 2 ]; then
+  step() { label=$1; printf '\033[2m○ %s\033[0m' "$label"; }
+  ok() { printf '\r\033[K\033[32m✔\033[0m %s\n' "${1:-$label}"; }
+else
+  step() { label=$1; }
+  ok() { printf '✔ %s\n' "${1:-$label}"; }
+fi
+
 instance='' new='' persistent=''
 while [ $# -gt 0 ]; do
   case $1 in
@@ -67,6 +77,7 @@ snapped=()
 mode=new
 if [ -z "$new" ]; then
   mode=resume
+  step "Snapshot session $id"
   transcript=$(find "$HOME"/.claude/projects/ -maxdepth 2 -name "$id.jsonl" -print -quit)
   if [ -z "$transcript" ]; then
     echo "No transcript for session $id" >&2
@@ -80,22 +91,28 @@ if [ -z "$new" ]; then
     cp -r "$dir/$id" "$snap/"
     snapped+=("$id")
   fi
+  ok
 fi
 
-echo "Creating instance $instance"
+step "Create instance $instance"
 render=("s/INSTANCE/$instance/g")
 if [ -n "$persistent" ]; then
   render+=('/# ephemeral$/d' 's/^#persistent //')
 fi
 sed "${render[@]/#/-e}" "$MANIFESTS" | kubectl apply -f - >/dev/null
+ok
+
+step "Start pod"
 until kubectl -n "$NS" wait --for=condition=Ready "pod/$POD" --timeout=300s >/dev/null 2>&1; do
   sleep 2
 done
+ok
 
+step "Push login and settings, start session"
 # The pod prints the session's short ID.
 short=$(beam_tar "${snapped[@]}" |
   kubectl -n "$NS" exec -i "$POD" -c claude -- \
     bash -c "$(cat "$BIN/beam-remote-copy.sh")" beam-remote-copy.sh "$mode" "$id" "${COLORTERM:-}")
 
-echo "Started session $short in instance $instance"
+ok "Started session $short in instance $instance"
 echo "Attach with: bin/beam-attach.sh $instance $short"
