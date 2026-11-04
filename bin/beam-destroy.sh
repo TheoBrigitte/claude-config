@@ -7,4 +7,4 @@
 set -euo pipefail
 
 instance=${1:?Usage: beam-destroy.sh INSTANCE}
-kubectl delete ns "claude-theo-$instance"
+kubectl delete ns --wait=false "claude-theo-$instance"
