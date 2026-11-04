@@ -16,8 +16,8 @@ if [ -z "${TMUX_PANE:-}" ]; then
   exit 1
 fi
 
-# The last line of beam-up.sh is "Attach with: bin/beam-attach.sh INSTANCE SHORT".
+# The last line of beam-up.sh is "➜ Attach with: bin/beam-attach.sh INSTANCE SHORT".
 last=$("$BIN/beam-up.sh" "$@" | tee /dev/stderr | tail -n 1)
-read -r _ _ _ instance short <<<"$last"
+read -r _ _ _ _ instance short <<<"$last"
 
 tmux respawn-pane -k -t "$TMUX_PANE" -c "$PWD" "$BIN/beam-attach.sh $instance $short; exec $SHELL"

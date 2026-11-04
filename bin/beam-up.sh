@@ -29,9 +29,11 @@ USAGE="Usage: beam-up.sh [-n INSTANCE] [--persistent] [--new | SESSION_ID]"
 if [ -t 1 ] || [ -t 2 ]; then
   step() { label=$1; printf '\033[2m○ %s\033[0m' "$label"; }
   ok() { printf '\r\033[K\033[32m✔\033[0m %s\n' "${1:-$label}"; }
+  next=$'\033[36m➜\033[0m'
 else
   step() { label=$1; }
   ok() { printf '✔ %s\n' "${1:-$label}"; }
+  next='➜'
 fi
 
 instance='' new='' persistent=''
@@ -115,4 +117,4 @@ short=$(beam_tar "${snapped[@]}" |
     bash -c "$(cat "$BIN/beam-remote-copy.sh")" beam-remote-copy.sh "$mode" "$id" "${COLORTERM:-}")
 
 ok "Started session $short in instance $instance"
-echo "Attach with: bin/beam-attach.sh $instance $short"
+echo "$next Attach with: bin/beam-attach.sh $instance $short"
